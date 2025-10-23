@@ -27,8 +27,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       '@fastify/websocket':
-        specifier: ^10.0.1
-        version: 10.0.1
+        specifier: ^11.2.0
+        version: 11.2.0
       better-sqlite3:
         specifier: ^11.7.0
         version: 11.10.0
@@ -57,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^22.10.2
         version: 22.18.12
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@vitest/coverage-v8':
         specifier: ^2.1.8
         version: 2.1.9(vitest@2.1.9)
@@ -72,6 +75,9 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.18.12)
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
 
   packages/shared:
     dependencies:
@@ -722,11 +728,11 @@ packages:
       ipaddr.js: 2.2.0
     dev: false
 
-  /@fastify/websocket@10.0.1:
-    resolution: {integrity: sha512-8/pQIxTPRD8U94aILTeJ+2O3el/r19+Ej5z1O1mXlqplsUH7KzCjAI0sgd5DM/NoPjAi5qLFNIjgM5+9/rGSNw==}
+  /@fastify/websocket@11.2.0:
+    resolution: {integrity: sha512-3HrDPbAG1CzUCqnslgJxppvzaAZffieOVbLp1DAy1huCSynUWPifSvfdEDUR8HlJLp3sp1A36uOM2tJogADS8w==}
     dependencies:
       duplexify: 4.1.3
-      fastify-plugin: 4.5.1
+      fastify-plugin: 5.1.0
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
@@ -1090,6 +1096,12 @@ packages:
     resolution: {integrity: sha512-BICHQ67iqxQGFSzfCFTT7MRQ5XcBjG5aeKh5Ok38UBbPe5fxTyE+aHFxwVrGyr8GNlqFMLKD1D3P2K/1ks8tog==}
     dependencies:
       undici-types: 6.21.0
+    dev: true
+
+  /@types/ws@8.18.1:
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+    dependencies:
+      '@types/node': 22.18.12
     dev: true
 
   /@vitest/coverage-v8@2.1.9(vitest@2.1.9):
@@ -1569,10 +1581,6 @@ packages:
 
   /fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
-    dev: false
-
-  /fastify-plugin@4.5.1:
-    resolution: {integrity: sha512-stRHYGeuqpEZTL1Ef0Ovr2ltazUT9g844X5z/zEBFLG8RYlpDiOCIG+ATvYEp+/zmc7sN29mcIMp8gvYplYPIQ==}
     dev: false
 
   /fastify-plugin@5.1.0:
@@ -2778,7 +2786,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-    dev: false
 
   /zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}

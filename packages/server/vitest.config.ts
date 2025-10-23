@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    testTimeout: 10000, // Increase timeout for WebSocket tests
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

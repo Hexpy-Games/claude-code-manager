@@ -10,6 +10,7 @@
 
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import cors from '@fastify/cors';
+import websocket from '@fastify/websocket';
 import { DatabaseClient } from './db/client.js';
 import { GitService } from './services/git-service.js';
 import { SessionManager } from './services/session-manager.js';
@@ -17,6 +18,7 @@ import { ClaudeAgentService, ConfigurationError } from './services/claude-agent-
 import { sessionsRoutes } from './routes/sessions.js';
 import { messagesRoutes } from './routes/messages.js';
 import { settingsRoutes } from './routes/settings.js';
+import { streamRoutes } from './routes/stream.js';
 
 // Extend Fastify instance with custom properties
 declare module 'fastify' {
@@ -74,6 +76,13 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
     origin: config.corsOrigin ?? true, // Allow all origins in development
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  // Register WebSocket plugin
+  await fastify.register(websocket, {
+    options: {
+      maxPayload: 1048576, // 1MB max message size
+    },
   });
 
   // Initialize services
@@ -137,6 +146,7 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
   await fastify.register(sessionsRoutes, { prefix: '/api' });
   await fastify.register(messagesRoutes, { prefix: '/api' });
   await fastify.register(settingsRoutes, { prefix: '/api' });
+  await fastify.register(streamRoutes, { prefix: '/api' });
 
   // Health check endpoint
   fastify.get('/health', async (request, reply) => {
