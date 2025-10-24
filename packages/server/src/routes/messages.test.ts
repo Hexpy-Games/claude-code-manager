@@ -18,11 +18,17 @@ describe('Messages Routes', () => {
   let mockSendMessage: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
-    // Create temp database
-    testDbPath = path.join(os.tmpdir(), `test-db-${Date.now()}.sqlite`);
+    // Create temp database with unique name (timestamp + random)
+    testDbPath = path.join(os.tmpdir(), `test-db-${Date.now()}-${Math.random().toString(36).substring(7)}.sqlite`);
 
-    // Create temp Git repository
-    testRepoPath = path.join(os.tmpdir(), `test-repo-${Date.now()}`);
+    // Create temp Git repository with unique name
+    testRepoPath = path.join(os.tmpdir(), `test-repo-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+
+    // Ensure clean state - remove if exists
+    if (fs.existsSync(testRepoPath)) {
+      fs.rmSync(testRepoPath, { recursive: true, force: true });
+    }
+
     fs.mkdirSync(testRepoPath, { recursive: true });
 
     const git = simpleGit(testRepoPath);
@@ -46,15 +52,16 @@ describe('Messages Routes', () => {
     mockSendMessage = vi
       .spyOn(server.claudeAgent, 'sendMessage')
       .mockImplementation(async (sessId, content) => {
+        const timestamp = Date.now();
         const userMessage = server.db.insertMessage({
-          id: `msg_test_user_${Date.now()}`,
+          id: `msg_test_user_${timestamp}_${Math.random().toString(36).substring(7)}`,
           sessionId: sessId,
           role: 'user',
           content,
         });
 
         const assistantMessage = server.db.insertMessage({
-          id: `msg_test_asst_${Date.now()}`,
+          id: `msg_test_asst_${timestamp}_${Math.random().toString(36).substring(7)}`,
           sessionId: sessId,
           role: 'assistant',
           content: 'Hello! How can I help you today?',

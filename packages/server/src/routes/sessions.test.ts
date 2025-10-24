@@ -16,11 +16,17 @@ describe('Sessions Routes', () => {
   let testRepoPath: string;
 
   beforeEach(async () => {
-    // Create temp database
-    testDbPath = path.join(os.tmpdir(), `test-db-${Date.now()}.sqlite`);
+    // Create temp database with unique name (timestamp + random)
+    testDbPath = path.join(os.tmpdir(), `test-db-${Date.now()}-${Math.random().toString(36).substring(7)}.sqlite`);
 
-    // Create temp Git repository
-    testRepoPath = path.join(os.tmpdir(), `test-repo-${Date.now()}`);
+    // Create temp Git repository with unique name
+    testRepoPath = path.join(os.tmpdir(), `test-repo-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+
+    // Ensure clean state - remove if exists
+    if (fs.existsSync(testRepoPath)) {
+      fs.rmSync(testRepoPath, { recursive: true, force: true });
+    }
+
     fs.mkdirSync(testRepoPath, { recursive: true });
 
     const git = simpleGit(testRepoPath);
@@ -42,11 +48,13 @@ describe('Sessions Routes', () => {
   });
 
   afterEach(async () => {
-    await server.close();
-    if (fs.existsSync(testDbPath)) {
+    if (server) {
+      await server.close();
+    }
+    if (testDbPath && fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
-    if (fs.existsSync(testRepoPath)) {
+    if (testRepoPath && fs.existsSync(testRepoPath)) {
       fs.rmSync(testRepoPath, { recursive: true, force: true });
     }
   });

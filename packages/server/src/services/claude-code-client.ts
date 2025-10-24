@@ -94,7 +94,48 @@ export interface ClaudeCodeClientConfig {
 }
 
 /**
- * Client for executing Claude Code CLI in headless mode
+ * Claude Code CLI Client
+ *
+ * Wrapper for executing the Claude Code CLI in headless (non-interactive) mode.
+ * Provides programmatic access to Claude's capabilities via the official CLI.
+ *
+ * ## Usage
+ *
+ * The client spawns the `claude` command as a child process and communicates
+ * via stdin/stdout. Two modes are supported:
+ *
+ * 1. **Non-streaming** (`sendMessage`): Wait for complete response
+ * 2. **Streaming** (`streamMessage`): Receive response chunks as they arrive
+ *
+ * ## Command Format
+ *
+ * Executes: `claude -p "<prompt>" --output-format stream-json [--session-id <id>]`
+ *
+ * - `-p`: Prompt (message to send)
+ * - `--output-format stream-json`: NDJSON output for parsing
+ * - `--session-id`: Resume previous conversation (optional)
+ *
+ * ## Output Format
+ *
+ * CLI returns newline-delimited JSON with event types:
+ * - `stream_event`: Content chunks (text deltas)
+ * - `assistant`: Final message with usage stats
+ * - `system`: Session initialization info
+ * - `result`: Final status (success/error)
+ *
+ * ## Session Management
+ *
+ * - First call: CLI creates new session, returns session ID
+ * - Subsequent calls: Pass session ID to maintain conversation context
+ * - Sessions are stored by CLI in ~/.config/claude-code/sessions/
+ *
+ * ## Error Handling
+ *
+ * - `ClaudeCodeCommandNotFoundError`: CLI not installed
+ * - `ClaudeCodeExecutionError`: CLI returned non-zero exit code
+ * - `ClaudeCodeError`: Other errors
+ *
+ * @requires claude CLI installed globally or in PATH
  */
 export class ClaudeCodeClient {
   private readonly model: string;

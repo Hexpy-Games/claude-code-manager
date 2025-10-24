@@ -24,9 +24,11 @@ function waitForOpen(ws: WebSocket): Promise<void> {
 }
 
 // Helper to wait for specific message type
+// Sets up handler BEFORE opening to avoid race conditions
 function waitForMessage(ws: WebSocket, type: string, timeout = 8000): Promise<any> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
+      ws.off('message', handler);
       reject(new Error(`Timeout waiting for message type: ${type}`));
     }, timeout);
 
@@ -43,8 +45,22 @@ function waitForMessage(ws: WebSocket, type: string, timeout = 8000): Promise<an
       }
     };
 
+    // Attach handler immediately to avoid race condition
     ws.on('message', handler);
   });
+}
+
+// Helper to wait for WebSocket open AND first 'connected' message
+// This combines both operations to prevent race conditions
+async function waitForConnection(ws: WebSocket): Promise<any> {
+  // Set up message handler FIRST, before connection completes
+  const connectedPromise = waitForMessage(ws, 'connected');
+
+  // Then wait for connection to open
+  await waitForOpen(ws);
+
+  // Finally wait for the connected message
+  return connectedPromise;
 }
 
 // Helper to collect all messages until 'done'
@@ -76,7 +92,7 @@ function collectMessages(ws: WebSocket, timeout = 8000): Promise<any[]> {
 }
 
 // Skip WebSocket tests temporarily - implementation is complete but needs integration testing
-describe.skip('WebSocket Stream Routes', () => {
+describe('WebSocket Stream Routes', () => {
   let server: FastifyInstance;
   let testDbPath: string;
   let testRepoPath: string;
@@ -143,9 +159,8 @@ describe.skip('WebSocket Stream Routes', () => {
   describe('Connection Lifecycle', () => {
     it('should establish WebSocket connection and receive connected message', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
+      const connectedMsg = await waitForConnection(ws);
 
-      const connectedMsg = await waitForMessage(ws, 'connected');
       expect(connectedMsg.type).toBe('connected');
       expect(connectedMsg.sessionId).toBe(sessionId);
 
@@ -166,8 +181,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should handle connection close gracefully', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       const closePromise = new Promise<void>((resolve) => {
         ws.on('close', () => resolve());
@@ -193,11 +207,10 @@ describe.skip('WebSocket Stream Routes', () => {
       const ws1 = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
       const ws2 = new WebSocket(`${serverAddress}/api/sessions/${sessionId2}/stream`);
 
-      await waitForOpen(ws1);
-      await waitForOpen(ws2);
-
-      const msg1 = await waitForMessage(ws1, 'connected');
-      const msg2 = await waitForMessage(ws2, 'connected');
+      const [msg1, msg2] = await Promise.all([
+        waitForConnection(ws1),
+        waitForConnection(ws2),
+      ]);
 
       expect(msg1.sessionId).toBe(sessionId);
       expect(msg2.sessionId).toBe(sessionId2);
@@ -229,8 +242,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       // Send message
       ws.send(JSON.stringify({ type: 'message', content: 'Hello' }));
@@ -259,8 +271,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should reject message with missing content', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message' }));
 
@@ -274,8 +285,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should reject message with empty content', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: '' }));
 
@@ -288,8 +298,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should reject message with invalid type', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'invalid', content: 'test' }));
 
@@ -302,8 +311,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should reject malformed JSON', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send('{invalid json}');
 
@@ -316,8 +324,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should handle ping/pong messages', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'ping' }));
 
@@ -338,8 +345,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: 'test' }));
 
@@ -373,8 +379,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: 'test' }));
 
@@ -413,8 +418,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: 'test' }));
 
@@ -447,8 +451,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: 'test' }));
 
@@ -488,8 +491,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: 'Hello' }));
       await collectMessages(ws);
@@ -523,8 +525,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       ws.send(JSON.stringify({ type: 'message', content: '你好 世界' }));
 
@@ -556,8 +557,7 @@ describe.skip('WebSocket Stream Routes', () => {
         });
 
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       // Send first message
       ws.send(JSON.stringify({ type: 'message', content: 'First' }));
@@ -576,8 +576,7 @@ describe.skip('WebSocket Stream Routes', () => {
 
     it('should maintain connection after error', async () => {
       const ws = new WebSocket(`${serverAddress}/api/sessions/${sessionId}/stream`);
-      await waitForOpen(ws);
-      await waitForMessage(ws, 'connected');
+      await waitForConnection(ws);
 
       // Send invalid message
       ws.send(JSON.stringify({ type: 'message', content: '' }));

@@ -59,6 +59,52 @@ export interface SendMessageResult {
   assistantMessage: Message;
 }
 
+/**
+ * Claude Agent Service
+ *
+ * Manages interactions with Claude using the Claude Code CLI in headless mode.
+ * This service wraps the CLI to provide a programmatic interface for sending
+ * messages and streaming responses.
+ *
+ * ## Implementation Approach
+ *
+ * Uses Claude Code CLI (`claude` command) instead of the Anthropic SDK because:
+ * 1. **Session Management**: CLI automatically handles conversation context and session persistence
+ * 2. **Tool Integration**: Built-in support for file operations, shell commands, and other tools
+ * 3. **Consistency**: Same model and behavior as the interactive Claude Code experience
+ * 4. **Simplicity**: No need to manually manage conversation history or tool implementations
+ *
+ * ## Headless Mode
+ *
+ * The CLI is invoked with `claude -p <prompt> --output-format stream-json` which:
+ * - Runs non-interactively (no TTY required)
+ * - Streams responses as NDJSON (newline-delimited JSON)
+ * - Supports session resumption via `--session-id` flag
+ * - Returns structured output that can be parsed programmatically
+ *
+ * ## Session Persistence
+ *
+ * Claude Code CLI maintains its own session state. We store the CLI session ID
+ * in our database session metadata to enable conversation continuity:
+ * - First message: CLI creates new session, we store the session ID
+ * - Follow-up messages: We pass stored session ID to resume conversation
+ *
+ * ## Limitations in CLI Mode
+ *
+ * - **Tool Calls**: Not exposed in headless mode output (handled internally by CLI)
+ * - **Stop Reason**: Limited visibility into why response ended
+ * - **Usage Metrics**: Token counts available but not real-time
+ *
+ * ## Error Handling
+ *
+ * Maps CLI errors to appropriate service errors:
+ * - Command not found → ConfigurationError
+ * - Rate limit (429) → RateLimitError
+ * - Network errors (ETIMEDOUT, ECONNRESET) → NetworkError
+ * - Other CLI errors → ClaudeAPIError
+ *
+ * @see ClaudeCodeClient for CLI interaction details
+ */
 export class ClaudeAgentService {
   private readonly client: ClaudeCodeClient;
   private readonly maxTokens: number;

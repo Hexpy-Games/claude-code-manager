@@ -36,7 +36,7 @@ export interface ServerConfig {
   port?: number;
   host?: string;
   databasePath: string;
-  claudeApiKey: string;
+  claudeApiKey?: string; // Optional, not used with ClaudeCodeClient
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
   corsOrigin?: string | string[] | boolean;
 }
