@@ -38,7 +38,6 @@ export interface ServerConfig {
   port?: number;
   host?: string;
   databasePath: string;
-  claudeApiKey?: string; // Optional, not used with ClaudeCodeClient
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
   corsOrigin?: string | string[] | boolean;
 }
@@ -50,9 +49,6 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
   // Validate required config
   if (!config.databasePath) {
     throw new Error('databasePath is required in ServerConfig');
-  }
-  if (!config.claudeApiKey) {
-    throw new Error('claudeApiKey is required in ServerConfig');
   }
 
   // Create Fastify instance

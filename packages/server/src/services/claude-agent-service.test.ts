@@ -886,6 +886,7 @@ describe('ClaudeAgentService', () => {
         id: 'sess_integration_test',
         title: 'Integration Test Session',
         rootDirectory: '/test',
+        workspacePath: '/tmp/claude-sessions/sess_integration_test/test',
         branchName: 'session/test',
       });
 

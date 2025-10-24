@@ -113,10 +113,18 @@ function createMockGitService(): GitService {
       }
       branches.push(branchName);
     }),
+    cloneRepository: vi.fn(async (sourceDirectory: string, targetDirectory: string, branchName: string) => {
+      // Mock clone by creating target directory
+      if (!fs.existsSync(targetDirectory)) {
+        fs.mkdirSync(targetDirectory, { recursive: true });
+      }
+      return targetDirectory;
+    }),
     checkoutBranch: vi.fn(async () => {}),
     getCurrentBranch: vi.fn(async () => 'main'),
     getBranches: vi.fn(async () => [...branches]),
     branchExists: vi.fn(async (branchName: string) => branches.includes(branchName)),
+    deleteBranch: vi.fn(async () => {}),
     getStatus: vi.fn(async () => ({
       branch: 'main',
       ahead: 0,
@@ -127,6 +135,8 @@ function createMockGitService(): GitService {
       renamed: [],
       isClean: true,
     })),
+    mergeBranch: vi.fn(async () => {}),
+    detectMergeConflicts: vi.fn(async () => false),
   } as any;
 }
 
@@ -543,7 +553,7 @@ describe('SessionManager - Unit Tests', () => {
       // Assert
       const retrieved = await sessionManager.getSession(session.id);
       expect(retrieved).toBeNull();
-      expect(mockGit.branchExists).toHaveBeenCalledWith(session.branchName, tempDir);
+      expect(mockGit.deleteBranch).toHaveBeenCalledWith(session.branchName, tempDir);
     });
 
     it('TC-025: should throw error for non-existent session', async () => {
@@ -590,7 +600,6 @@ describe('SessionManager - Unit Tests', () => {
       // Assert
       expect(switched.id).toBe(session2.id);
       expect(switched.isActive).toBe(true);
-      expect(mockGit.checkoutBranch).toHaveBeenCalledWith(session2.branchName, tempDir);
 
       // Verify session1 is now inactive
       const session1After = await sessionManager.getSession(session1.id);
@@ -637,22 +646,24 @@ describe('SessionManager - Unit Tests', () => {
       // Assert
       expect(switched.id).toBe(session.id);
       expect(switched.isActive).toBe(true);
-      expect(mockGit.checkoutBranch).toHaveBeenCalledWith(session.branchName, tempDir);
     });
 
-    it('TC-032: should handle Git checkout failure', async () => {
+    it('TC-032: should handle workspace not existing', async () => {
       // Arrange
       const session = await sessionManager.createSession({
         title: 'Test Session',
         rootDirectory: tempDir,
       });
 
-      mockGit.checkoutBranch = vi.fn(async () => {
-        throw new GitOperationError('Checkout failed');
-      });
+      // Simulate workspace deletion
+      const workspacePath = session.workspacePath;
+      if (fs.existsSync(workspacePath)) {
+        fs.rmSync(workspacePath, { recursive: true, force: true });
+      }
 
       // Act & Assert
       await expect(sessionManager.switchSession(session.id)).rejects.toThrow(GitOperationError);
+      await expect(sessionManager.switchSession(session.id)).rejects.toThrow(/workspace does not exist/i);
 
       // Verify session is not marked as active
       const retrieved = await sessionManager.getSession(session.id);
@@ -721,9 +732,10 @@ describe('SessionManager - Integration Tests', () => {
     const switched = await sessionManager.switchSession(session.id);
     expect(switched.isActive).toBe(true);
 
-    // Verify Git branch is checked out
-    const currentBranch = await git.getCurrentBranch(tempDir);
-    expect(currentBranch).toBe(session.branchName);
+    // Verify workspace exists and has correct branch
+    expect(fs.existsSync(session.workspacePath)).toBe(true);
+    const workspaceBranch = await git.getCurrentBranch(session.workspacePath);
+    expect(workspaceBranch).toBe(session.branchName);
 
     // Delete session
     await sessionManager.deleteSession(session.id);
@@ -783,22 +795,22 @@ describe('SessionManager - Integration Tests', () => {
     await sessionManager.switchSession(sessionA.id);
     let active = await sessionManager.getActiveSession();
     expect(active?.id).toBe(sessionA.id);
-    let currentBranch = await git.getCurrentBranch(tempDir);
-    expect(currentBranch).toBe(sessionA.branchName);
+    let workspaceBranch = await git.getCurrentBranch(sessionA.workspacePath);
+    expect(workspaceBranch).toBe(sessionA.branchName);
 
     // Switch to B
     await sessionManager.switchSession(sessionB.id);
     active = await sessionManager.getActiveSession();
     expect(active?.id).toBe(sessionB.id);
-    currentBranch = await git.getCurrentBranch(tempDir);
-    expect(currentBranch).toBe(sessionB.branchName);
+    workspaceBranch = await git.getCurrentBranch(sessionB.workspacePath);
+    expect(workspaceBranch).toBe(sessionB.branchName);
 
     // Switch to C
     await sessionManager.switchSession(sessionC.id);
     active = await sessionManager.getActiveSession();
     expect(active?.id).toBe(sessionC.id);
-    currentBranch = await git.getCurrentBranch(tempDir);
-    expect(currentBranch).toBe(sessionC.branchName);
+    workspaceBranch = await git.getCurrentBranch(sessionC.workspacePath);
+    expect(workspaceBranch).toBe(sessionC.branchName);
 
     // Verify only C is active
     const sessions = await sessionManager.listSessions();

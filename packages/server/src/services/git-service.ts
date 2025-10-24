@@ -498,6 +498,70 @@ export class GitService {
       );
     }
   }
+
+  /**
+   * Clone a repository to a workspace directory
+   *
+   * This creates an isolated clone with only Git-tracked files (like cloning from GitHub).
+   * Perfect for session-based workflows where each session needs its own workspace.
+   *
+   * @param sourceDirectory - Original repository path
+   * @param targetDirectory - Workspace directory to clone to
+   * @param branchName - Branch to checkout after cloning
+   * @returns Path to the cloned repository
+   */
+  async cloneRepository(
+    sourceDirectory: string,
+    targetDirectory: string,
+    branchName: string,
+  ): Promise<string> {
+    try {
+      // Verify source is a Git repository
+      const isRepo = await this.isGitRepo(sourceDirectory);
+      if (!isRepo) {
+        throw new NotGitRepoError(sourceDirectory);
+      }
+
+      // Ensure target directory doesn't exist
+      if (fs.existsSync(targetDirectory)) {
+        throw new GitOperationError(`Target directory already exists: ${targetDirectory}`);
+      }
+
+      // Create parent directory if it doesn't exist
+      const parentDir = path.dirname(targetDirectory);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+
+      // Clone the repository (only Git-tracked files, no working tree modifications)
+      const git = simpleGit();
+      await git.clone(sourceDirectory, targetDirectory, ['--no-hardlinks']);
+
+      // Checkout the specified branch
+      const clonedGit = simpleGit(targetDirectory);
+      await clonedGit.checkout(branchName);
+
+      return targetDirectory;
+    } catch (error) {
+      // Clean up partial clone on error
+      if (fs.existsSync(targetDirectory)) {
+        try {
+          fs.rmSync(targetDirectory, { recursive: true, force: true });
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+
+      if (error instanceof NotGitRepoError || error instanceof GitOperationError) {
+        throw error;
+      }
+
+      throw new GitOperationError(
+        `Failed to clone repository: ${(error as Error).message}`,
+        error,
+      );
+    }
+  }
 }
 
 // Export singleton instance

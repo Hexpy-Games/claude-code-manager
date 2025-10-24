@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   root_directory TEXT NOT NULL,
+  workspace_path TEXT NOT NULL,
   branch_name TEXT NOT NULL,
   base_branch TEXT DEFAULT 'main',
   git_status TEXT,

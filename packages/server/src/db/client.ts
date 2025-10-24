@@ -57,10 +57,10 @@ export class DatabaseClient {
     const now = Date.now();
     const stmt = this.raw.prepare(`
       INSERT INTO sessions (
-        id, title, root_directory, branch_name, base_branch,
+        id, title, root_directory, workspace_path, branch_name, base_branch,
         git_status, created_at, updated_at, metadata, is_active
       ) VALUES (
-        @id, @title, @rootDirectory, @branchName, @baseBranch,
+        @id, @title, @rootDirectory, @workspacePath, @branchName, @baseBranch,
         @gitStatus, @createdAt, @updatedAt, @metadata, 0
       )
     `);
@@ -69,6 +69,7 @@ export class DatabaseClient {
       id: session.id,
       title: session.title,
       rootDirectory: session.rootDirectory,
+      workspacePath: session.workspacePath,
       branchName: session.branchName,
       baseBranch: session.baseBranch ?? 'main',
       gitStatus: session.gitStatus ?? null,
@@ -83,8 +84,8 @@ export class DatabaseClient {
   getSession(id: string): Session | null {
     const stmt = this.raw.prepare(`
       SELECT
-        id, title, root_directory as rootDirectory, branch_name as branchName,
-        base_branch as baseBranch, git_status as gitStatus,
+        id, title, root_directory as rootDirectory, workspace_path as workspacePath,
+        branch_name as branchName, base_branch as baseBranch, git_status as gitStatus,
         created_at as createdAt, updated_at as updatedAt,
         last_message_at as lastMessageAt, metadata, is_active as isActive
       FROM sessions
@@ -104,8 +105,8 @@ export class DatabaseClient {
   getSessions(): Session[] {
     const stmt = this.raw.prepare(`
       SELECT
-        id, title, root_directory as rootDirectory, branch_name as branchName,
-        base_branch as baseBranch, git_status as gitStatus,
+        id, title, root_directory as rootDirectory, workspace_path as workspacePath,
+        branch_name as branchName, base_branch as baseBranch, git_status as gitStatus,
         created_at as createdAt, updated_at as updatedAt,
         last_message_at as lastMessageAt, metadata, is_active as isActive
       FROM sessions

@@ -16,6 +16,7 @@ import {
 } from './git-service.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 
 /**
  * Custom error classes for SessionManager
@@ -80,6 +81,11 @@ export class SessionManager {
   /**
    * Create a new session
    *
+   * Creates a session by:
+   * 1. Creating a branch in the original repository
+   * 2. Cloning the repository to an isolated workspace
+   * 3. Checking out the session branch in the workspace
+   *
    * @param options - Session creation options
    * @returns Created session
    * @throws {InvalidSessionDataError} If validation fails
@@ -96,19 +102,24 @@ export class SessionManager {
     // Generate unique session ID and branch name
     let sessionId!: string;
     let branchName!: string;
+    let workspacePath!: string;
     let attempts = 0;
 
     // Retry loop in case of branch name collision
     while (attempts < this.maxRetries) {
       sessionId = this.generateSessionId();
       branchName = this.getBranchName(sessionId);
+      workspacePath = this.getWorkspacePath(sessionId, options.rootDirectory);
 
       try {
-        // Create Git branch first
+        // Create Git branch in original repository
         const baseBranch = options.baseBranch ?? 'main';
         await this.git.createBranch(branchName, baseBranch, options.rootDirectory);
 
-        // Branch created successfully, break out of retry loop
+        // Clone repository to workspace
+        await this.git.cloneRepository(options.rootDirectory, workspacePath, branchName);
+
+        // Branch and workspace created successfully, break out of retry loop
         break;
       } catch (error) {
         if (error instanceof BranchExistsError) {
@@ -134,6 +145,7 @@ export class SessionManager {
         id: sessionId,
         title: options.title,
         rootDirectory: options.rootDirectory,
+        workspacePath: workspacePath,
         branchName: branchName,
         baseBranch: options.baseBranch ?? 'main',
         metadata: options.metadata,
@@ -141,10 +153,18 @@ export class SessionManager {
 
       return session;
     } catch (error) {
-      // Database insert failed after Git branch created
-      // Log the orphaned branch for manual cleanup
+      // Database insert failed after Git branch and workspace created
+      // Clean up workspace and log orphaned branch
+      try {
+        if (fs.existsSync(workspacePath)) {
+          fs.rmSync(workspacePath, { recursive: true, force: true });
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+
       console.error(
-        `Warning: Git branch "${branchName}" created but database insert failed. Branch may be orphaned.`,
+        `Warning: Git branch "${branchName}" and workspace created but database insert failed. Branch may be orphaned.`,
         error,
       );
       throw error;
@@ -217,6 +237,9 @@ export class SessionManager {
   /**
    * Delete a session
    *
+   * Deletes the session and cleans up its workspace directory.
+   * Optionally deletes the Git branch from the original repository.
+   *
    * @param id - Session ID
    * @param options - Deletion options
    * @throws {SessionNotFoundError} If session doesn't exist
@@ -233,23 +256,22 @@ export class SessionManager {
       this.db.updateSession(id, { isActive: false });
     }
 
+    // Clean up workspace directory
+    try {
+      if (fs.existsSync(session.workspacePath)) {
+        fs.rmSync(session.workspacePath, { recursive: true, force: true });
+        console.log(`Cleaned up workspace: ${session.workspacePath}`);
+      }
+    } catch (error) {
+      // Log error but continue with deletion
+      console.error(`Failed to delete workspace: ${session.workspacePath}`, error);
+    }
+
     // Delete Git branch if requested
     if (options?.deleteGitBranch) {
       try {
-        // Check if branch exists before trying to delete
-        const branchExists = await this.git.branchExists(
-          session.branchName,
-          session.rootDirectory,
-        );
-
-        if (branchExists) {
-          // Note: simple-git doesn't have direct branch deletion in the interface
-          // We'll need to use raw Git command or extend GitService
-          // For now, we'll skip actual branch deletion and just document it
-          console.warn(
-            `Git branch deletion requested but not yet implemented: ${session.branchName}`,
-          );
-        }
+        await this.git.deleteBranch(session.branchName, session.rootDirectory);
+        console.log(`Deleted Git branch: ${session.branchName}`);
       } catch (error) {
         // Log error but continue with database deletion
         console.error(`Failed to delete Git branch: ${session.branchName}`, error);
@@ -263,13 +285,13 @@ export class SessionManager {
   /**
    * Switch to a different session
    *
-   * Makes the target session active and checks out its Git branch.
-   * Deactivates the currently active session if one exists.
+   * Makes the target session active. The workspace path is already cloned
+   * and ready to use. Claude Code CLI should use the workspace path when
+   * this session is active.
    *
    * @param id - Target session ID
-   * @returns Activated session
+   * @returns Activated session with workspacePath
    * @throws {SessionNotFoundError} If session doesn't exist
-   * @throws {GitOperationError} If Git checkout fails
    */
   async switchSession(id: string): Promise<Session> {
     // Get target session
@@ -283,30 +305,23 @@ export class SessionManager {
       return targetSession;
     }
 
+    // Verify workspace exists
+    if (!fs.existsSync(targetSession.workspacePath)) {
+      throw new GitOperationError(
+        `Workspace does not exist: ${targetSession.workspacePath}. Session may be corrupted.`
+      );
+    }
+
     // Get current active session
     const currentActive = await this.getActiveSession();
 
-    try {
-      // Checkout Git branch
-      await this.git.checkoutBranch(targetSession.branchName, targetSession.rootDirectory);
-
-      // Update database state
-      if (currentActive) {
-        this.db.updateSession(currentActive.id, { isActive: false });
-      }
-
-      const updatedSession = this.db.updateSession(id, { isActive: true });
-      return updatedSession;
-    } catch (error) {
-      // Git checkout failed, don't change database state
-      if (error instanceof GitOperationError) {
-        throw new GitOperationError(
-          `Failed to switch to session "${targetSession.title}": ${error.message}`,
-          error,
-        );
-      }
-      throw error;
+    // Update database state
+    if (currentActive) {
+      this.db.updateSession(currentActive.id, { isActive: false });
     }
+
+    const updatedSession = this.db.updateSession(id, { isActive: true });
+    return updatedSession;
   }
 
   // ============================================================================
@@ -360,6 +375,21 @@ export class SessionManager {
    */
   private getBranchName(sessionId: string): string {
     return `session/${sessionId}`;
+  }
+
+  /**
+   * Get workspace path for a session
+   */
+  private getWorkspacePath(sessionId: string, rootDirectory: string): string {
+    // Use tmp directory for workspaces
+    const tmpDir = os.tmpdir();
+    const workspacesDir = path.join(tmpDir, 'claude-sessions');
+
+    // Get repository name from root directory
+    const repoName = path.basename(rootDirectory);
+
+    // Create workspace path: /tmp/claude-sessions/sess_abc123/repo-name
+    return path.join(workspacesDir, sessionId, repoName);
   }
 }
 

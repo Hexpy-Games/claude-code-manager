@@ -99,6 +99,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
         baseBranch: 'main',
       };
@@ -119,6 +120,8 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       };
       db.insertSession(session);
@@ -133,6 +136,8 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       };
 
@@ -163,6 +168,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       };
       db.insertSession(session);
@@ -202,6 +208,7 @@ describe('DatabaseClient', () => {
         id: 'sess_1',
         title: 'Session 1',
         rootDirectory: '/path1',
+        workspacePath: '/tmp/claude-sessions/sess_1/path1',
         branchName: 'session/sess_1',
       });
 
@@ -212,6 +219,7 @@ describe('DatabaseClient', () => {
         id: 'sess_2',
         title: 'Session 2',
         rootDirectory: '/path2',
+        workspacePath: '/tmp/claude-sessions/sess_2/path2',
         branchName: 'session/sess_2',
       });
 
@@ -249,6 +257,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Original Title',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -290,6 +299,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -307,6 +317,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
       db.insertMessage({
@@ -342,6 +353,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -380,6 +392,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -418,6 +431,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -452,6 +466,7 @@ describe('DatabaseClient', () => {
         id: 'sess_test123',
         title: 'Test Session',
         rootDirectory: '/test/path',
+        workspacePath: '/tmp/claude-sessions/sess_test123/test',
         branchName: 'session/sess_test123',
       });
 
@@ -553,6 +568,7 @@ describe('DatabaseClient', () => {
         id: 'sess_integration',
         title: 'Integration Test Session',
         rootDirectory: '/test/integration',
+        workspacePath: '/tmp/claude-sessions/sess_integration/integration',
         branchName: 'session/sess_integration',
       });
 

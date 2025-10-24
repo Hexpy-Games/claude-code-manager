@@ -4,6 +4,7 @@ export interface Session {
   id: string;
   title: string;
   rootDirectory: string;
+  workspacePath: string;
   branchName: string;
   baseBranch: string;
   gitStatus: string | null;
@@ -18,6 +19,7 @@ export interface InsertSession {
   id: string;
   title: string;
   rootDirectory: string;
+  workspacePath: string;
   branchName: string;
   baseBranch?: string;
   gitStatus?: string | null;
