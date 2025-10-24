@@ -69,6 +69,22 @@ export const setSettingSchema = z
 export type SetSettingRequest = z.infer<typeof setSettingSchema>;
 
 // ============================================================================
+// Git Operation Schemas
+// ============================================================================
+
+export const mergeBranchSchema = z.object({
+  targetBranch: z.string().optional().default('main'),
+});
+
+export type MergeBranchRequest = z.infer<typeof mergeBranchSchema>;
+
+export const checkConflictsQuerySchema = z.object({
+  targetBranch: z.string().optional().default('main'),
+});
+
+export type CheckConflictsQuery = z.infer<typeof checkConflictsQuerySchema>;
+
+// ============================================================================
 // Response Schemas
 // ============================================================================
 

@@ -307,6 +307,197 @@ export class GitService {
       );
     }
   }
+
+  /**
+   * Merge a source branch into a target branch
+   *
+   * @param sourceBranch - Branch to merge from
+   * @param targetBranch - Branch to merge into
+   * @param directory - Repository directory
+   */
+  async mergeBranch(sourceBranch: string, targetBranch: string, directory: string): Promise<void> {
+    try {
+      // Verify it's a Git repository
+      const isRepo = await this.isGitRepo(directory);
+      if (!isRepo) {
+        throw new NotGitRepoError(directory);
+      }
+
+      const git = simpleGit(directory);
+
+      // Verify both branches exist
+      const sourceExists = await this.branchExists(sourceBranch, directory);
+      if (!sourceExists) {
+        throw new GitOperationError(`Source branch does not exist: ${sourceBranch}`);
+      }
+
+      const targetExists = await this.branchExists(targetBranch, directory);
+      if (!targetExists) {
+        throw new GitOperationError(`Target branch does not exist: ${targetBranch}`);
+      }
+
+      // Checkout target branch
+      await git.checkout(targetBranch);
+
+      // Merge source branch into target
+      await git.merge([sourceBranch]);
+    } catch (error) {
+      if (error instanceof NotGitRepoError || error instanceof GitOperationError) {
+        throw error;
+      }
+
+      throw new GitOperationError(
+        `Failed to merge ${sourceBranch} into ${targetBranch}: ${(error as Error).message}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Detect if merging would cause conflicts
+   *
+   * @param sourceBranch - Branch to merge from
+   * @param targetBranch - Branch to merge into
+   * @param directory - Repository directory
+   * @returns True if conflicts would occur, false otherwise
+   */
+  async detectMergeConflicts(sourceBranch: string, targetBranch: string, directory: string): Promise<boolean> {
+    try {
+      // Verify it's a Git repository
+      const isRepo = await this.isGitRepo(directory);
+      if (!isRepo) {
+        throw new NotGitRepoError(directory);
+      }
+
+      const git = simpleGit(directory);
+
+      // Verify both branches exist
+      const sourceExists = await this.branchExists(sourceBranch, directory);
+      if (!sourceExists) {
+        throw new GitOperationError(`Source branch does not exist: ${sourceBranch}`);
+      }
+
+      const targetExists = await this.branchExists(targetBranch, directory);
+      if (!targetExists) {
+        throw new GitOperationError(`Target branch does not exist: ${targetBranch}`);
+      }
+
+      // Save current branch to restore later
+      const currentBranch = await this.getCurrentBranch(directory);
+
+      try {
+        // Checkout target branch
+        await git.checkout(targetBranch);
+
+        // Try to merge with --no-commit to detect conflicts without completing the merge
+        // Note: --no-commit doesn't error on conflicts; it leaves files in conflicted state
+        let mergeError: Error | null = null;
+        try {
+          await git.raw(['merge', '--no-commit', '--no-ff', sourceBranch]);
+        } catch (error) {
+          mergeError = error as Error;
+        }
+
+        // Check repository status to see if there are conflicts
+        const status = await git.status();
+        const hasConflicts = status.conflicted.length > 0;
+
+        // Abort/cleanup the merge attempt
+        try {
+          await git.raw(['merge', '--abort']);
+        } catch {
+          // If abort fails, try to reset
+          try {
+            await git.raw(['reset', '--hard', 'HEAD']);
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+
+        // If there are conflicts, return true
+        if (hasConflicts) {
+          return true;
+        }
+
+        // If there was a merge error but no conflicts in status, check error message
+        if (mergeError) {
+          const errorMessage = mergeError.message;
+          const hasConflictIndicator =
+            errorMessage.toLowerCase().includes('conflict') ||
+            errorMessage.includes('Automatic merge failed') ||
+            errorMessage.includes('CONFLICT');
+
+          if (hasConflictIndicator) {
+            return true;
+          }
+
+          // Other merge errors (not conflicts) - throw
+          throw mergeError;
+        }
+
+        // No conflicts detected
+        return false;
+      } finally {
+        // Restore original branch
+        try {
+          await git.checkout(currentBranch);
+        } catch {
+          // Ignore checkout errors during cleanup
+        }
+      }
+    } catch (error) {
+      if (error instanceof NotGitRepoError || error instanceof GitOperationError) {
+        throw error;
+      }
+
+      throw new GitOperationError(
+        `Failed to detect merge conflicts: ${(error as Error).message}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Delete a Git branch
+   *
+   * @param branchName - Branch name to delete
+   * @param directory - Repository directory
+   */
+  async deleteBranch(branchName: string, directory: string): Promise<void> {
+    try {
+      // Verify it's a Git repository
+      const isRepo = await this.isGitRepo(directory);
+      if (!isRepo) {
+        throw new NotGitRepoError(directory);
+      }
+
+      const git = simpleGit(directory);
+
+      // Verify branch exists
+      const exists = await this.branchExists(branchName, directory);
+      if (!exists) {
+        throw new GitOperationError(`Branch does not exist: ${branchName}`);
+      }
+
+      // Verify we're not on the branch we're trying to delete
+      const currentBranch = await this.getCurrentBranch(directory);
+      if (currentBranch === branchName) {
+        throw new GitOperationError(`Cannot delete current branch: ${branchName}`);
+      }
+
+      // Delete the branch
+      await git.deleteLocalBranch(branchName);
+    } catch (error) {
+      if (error instanceof NotGitRepoError || error instanceof GitOperationError) {
+        throw error;
+      }
+
+      throw new GitOperationError(
+        `Failed to delete branch ${branchName}: ${(error as Error).message}`,
+        error,
+      );
+    }
+  }
 }
 
 // Export singleton instance

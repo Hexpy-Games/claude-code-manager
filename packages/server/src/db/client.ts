@@ -281,6 +281,19 @@ export class DatabaseClient {
     return this.getSetting(key, scope)!;
   }
 
+  getAllSettings(): Setting[] {
+    const stmt = this.raw.prepare(
+      'SELECT key, value, scope, updated_at as updatedAt FROM settings ORDER BY key ASC'
+    );
+    const rows = stmt.all() as any[];
+
+    return rows.map((row) => ({
+      ...row,
+      scope: row.scope === '' ? null : row.scope,
+      value: JSON.parse(row.value),
+    }));
+  }
+
   deleteSetting(key: string): void {
     const stmt = this.raw.prepare('DELETE FROM settings WHERE key = ?');
     stmt.run(key);

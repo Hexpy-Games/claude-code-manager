@@ -19,11 +19,13 @@ import { sessionsRoutes } from './routes/sessions.js';
 import { messagesRoutes } from './routes/messages.js';
 import { settingsRoutes } from './routes/settings.js';
 import { streamRoutes } from './routes/stream.js';
+import { gitRoutes } from './routes/git.js';
 
 // Extend Fastify instance with custom properties
 declare module 'fastify' {
   interface FastifyInstance {
     db: DatabaseClient;
+    gitService: GitService;
     sessionManager: SessionManager;
     claudeAgent: ClaudeAgentService;
   }
@@ -95,6 +97,7 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
 
   // Decorate Fastify instance with services
   fastify.decorate('db', db);
+  fastify.decorate('gitService', git);
   fastify.decorate('sessionManager', sessionManager);
   fastify.decorate('claudeAgent', claudeAgent);
 
@@ -147,6 +150,7 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
   await fastify.register(messagesRoutes, { prefix: '/api' });
   await fastify.register(settingsRoutes, { prefix: '/api' });
   await fastify.register(streamRoutes, { prefix: '/api' });
+  await fastify.register(gitRoutes, { prefix: '/api' });
 
   // Health check endpoint
   fastify.get('/health', async (request, reply) => {

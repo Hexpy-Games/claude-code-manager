@@ -315,4 +315,167 @@ describe('Settings Routes', () => {
       expect(JSON.parse(response3.body).data.value).toBe(true);
     });
   });
+
+  describe('GET /api/settings', () => {
+    it('should return all settings', async () => {
+      // Create multiple settings
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/theme',
+        payload: { value: 'dark' },
+      });
+
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/fontSize',
+        payload: { value: 14 },
+      });
+
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/autoSave',
+        payload: { value: true },
+      });
+
+      // Get all settings
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/settings',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.settings).toHaveLength(3);
+
+      const keys = body.data.settings.map((s: any) => s.key);
+      expect(keys).toContain('theme');
+      expect(keys).toContain('fontSize');
+      expect(keys).toContain('autoSave');
+    });
+
+    it('should return empty array when no settings exist', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/settings',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.settings).toEqual([]);
+    });
+
+    it('should return settings with correct values', async () => {
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/config',
+        payload: {
+          value: { notifications: true, theme: 'dark' },
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/settings',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      const configSetting = body.data.settings.find((s: any) => s.key === 'config');
+      expect(configSetting.value).toEqual({ notifications: true, theme: 'dark' });
+    });
+  });
+
+  describe('DELETE /api/settings/:key', () => {
+    it('should delete existing setting', async () => {
+      // Create a setting
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/theme',
+        payload: { value: 'dark' },
+      });
+
+      // Verify it exists
+      const getResponse = await server.inject({
+        method: 'GET',
+        url: '/api/settings/theme',
+      });
+      expect(getResponse.statusCode).toBe(200);
+
+      // Delete the setting
+      const deleteResponse = await server.inject({
+        method: 'DELETE',
+        url: '/api/settings/theme',
+      });
+
+      expect(deleteResponse.statusCode).toBe(200);
+      const body = JSON.parse(deleteResponse.body);
+      expect(body.data.success).toBe(true);
+
+      // Verify it's deleted
+      const getAfterDelete = await server.inject({
+        method: 'GET',
+        url: '/api/settings/theme',
+      });
+      expect(getAfterDelete.statusCode).toBe(404);
+    });
+
+    it('should return 404 when deleting non-existent setting', async () => {
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/settings/nonexistent',
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toBe('SettingNotFoundError');
+    });
+
+    it('should not affect other settings when deleting one', async () => {
+      // Create multiple settings
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/theme',
+        payload: { value: 'dark' },
+      });
+
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/fontSize',
+        payload: { value: 14 },
+      });
+
+      // Delete one setting
+      await server.inject({
+        method: 'DELETE',
+        url: '/api/settings/theme',
+      });
+
+      // Verify the other setting still exists
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/settings/fontSize',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.value).toBe(14);
+    });
+
+    it('should handle special characters in key', async () => {
+      // Create setting with special characters
+      await server.inject({
+        method: 'PUT',
+        url: '/api/settings/user.preferences.theme',
+        payload: { value: 'dark' },
+      });
+
+      // Delete it
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/settings/user.preferences.theme',
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+  });
 });

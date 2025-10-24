@@ -557,6 +557,228 @@ describe('GitService', () => {
       expect(status.branch).toBe('feature/status-test');
     });
   });
+
+  describe('mergeBranch()', () => {
+    let tempDir: string;
+    let gitService: GitService;
+
+    beforeEach(() => {
+      gitService = new GitService();
+    });
+
+    afterEach(() => {
+      if (tempDir && fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should merge feature branch into target branch successfully', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+
+      // Create feature branch and add a commit
+      await gitService.createBranch('feature/test', 'main', tempDir);
+      await gitService.checkoutBranch('feature/test', tempDir);
+      const git = simpleGit(tempDir);
+      fs.writeFileSync(path.join(tempDir, 'feature.txt'), 'feature content');
+      await git.add('.');
+      await git.commit('Add feature file');
+
+      // Act - merge feature branch into main
+      await gitService.mergeBranch('feature/test', 'main', tempDir);
+
+      // Assert - verify file exists on main branch
+      await gitService.checkoutBranch('main', tempDir);
+      expect(fs.existsSync(path.join(tempDir, 'feature.txt'))).toBe(true);
+    });
+
+    it('should throw NotGitRepoError when directory is not a Git repo', async () => {
+      // Arrange
+      tempDir = await createTempDir();
+
+      // Act & Assert
+      await expect(
+        gitService.mergeBranch('feature/test', 'main', tempDir)
+      ).rejects.toThrow(NotGitRepoError);
+    });
+
+    it('should throw GitOperationError when source branch does not exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+
+      // Act & Assert
+      await expect(
+        gitService.mergeBranch('nonexistent', 'main', tempDir)
+      ).rejects.toThrow(GitOperationError);
+    });
+
+    it('should throw GitOperationError when target branch does not exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      await gitService.createBranch('feature/test', 'main', tempDir);
+
+      // Act & Assert
+      await expect(
+        gitService.mergeBranch('feature/test', 'nonexistent', tempDir)
+      ).rejects.toThrow(GitOperationError);
+    });
+
+    it('should handle fast-forward merges', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      await gitService.createBranch('feature/fast-forward', 'main', tempDir);
+      await gitService.checkoutBranch('feature/fast-forward', tempDir);
+      const git = simpleGit(tempDir);
+      fs.writeFileSync(path.join(tempDir, 'fast-forward.txt'), 'content');
+      await git.add('.');
+      await git.commit('Fast-forward commit');
+
+      // Act
+      await gitService.mergeBranch('feature/fast-forward', 'main', tempDir);
+
+      // Assert - verify merge was successful
+      await gitService.checkoutBranch('main', tempDir);
+      expect(fs.existsSync(path.join(tempDir, 'fast-forward.txt'))).toBe(true);
+    });
+  });
+
+  describe('detectMergeConflicts()', () => {
+    let tempDir: string;
+    let gitService: GitService;
+
+    beforeEach(() => {
+      gitService = new GitService();
+    });
+
+    afterEach(() => {
+      if (tempDir && fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should return false when no conflicts exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      await gitService.createBranch('feature/no-conflict', 'main', tempDir);
+      await gitService.checkoutBranch('feature/no-conflict', tempDir);
+      const git = simpleGit(tempDir);
+      fs.writeFileSync(path.join(tempDir, 'new-file.txt'), 'new content');
+      await git.add('.');
+      await git.commit('Add new file');
+
+      // Act
+      const hasConflicts = await gitService.detectMergeConflicts('feature/no-conflict', 'main', tempDir);
+
+      // Assert
+      expect(hasConflicts).toBe(false);
+    });
+
+    it('should return true when merge conflicts exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      const git = simpleGit(tempDir);
+
+      // Create conflicting changes on main
+      fs.writeFileSync(path.join(tempDir, 'test.txt'), 'main content');
+      await git.add('.');
+      await git.commit('Update on main');
+
+      // Create conflicting changes on feature branch
+      await gitService.createBranch('feature/conflict', 'main~1', tempDir);
+      await gitService.checkoutBranch('feature/conflict', tempDir);
+      fs.writeFileSync(path.join(tempDir, 'test.txt'), 'feature content');
+      await git.add('.');
+      await git.commit('Update on feature');
+
+      // Act
+      const hasConflicts = await gitService.detectMergeConflicts('feature/conflict', 'main', tempDir);
+
+      // Assert
+      expect(hasConflicts).toBe(true);
+    });
+
+    it('should throw NotGitRepoError when directory is not a Git repo', async () => {
+      // Arrange
+      tempDir = await createTempDir();
+
+      // Act & Assert
+      await expect(
+        gitService.detectMergeConflicts('feature/test', 'main', tempDir)
+      ).rejects.toThrow(NotGitRepoError);
+    });
+
+    it('should throw GitOperationError when source branch does not exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+
+      // Act & Assert
+      await expect(
+        gitService.detectMergeConflicts('nonexistent', 'main', tempDir)
+      ).rejects.toThrow(GitOperationError);
+    });
+  });
+
+  describe('deleteBranch()', () => {
+    let tempDir: string;
+    let gitService: GitService;
+
+    beforeEach(() => {
+      gitService = new GitService();
+    });
+
+    afterEach(() => {
+      if (tempDir && fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    it('should delete a branch successfully', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      await gitService.createBranch('feature/to-delete', 'main', tempDir);
+      // Ensure we're on main branch before deleting
+      await gitService.checkoutBranch('main', tempDir);
+
+      // Act
+      await gitService.deleteBranch('feature/to-delete', tempDir);
+
+      // Assert - branch should not exist
+      const exists = await gitService.branchExists('feature/to-delete', tempDir);
+      expect(exists).toBe(false);
+    });
+
+    it('should throw NotGitRepoError when directory is not a Git repo', async () => {
+      // Arrange
+      tempDir = await createTempDir();
+
+      // Act & Assert
+      await expect(
+        gitService.deleteBranch('feature/test', tempDir)
+      ).rejects.toThrow(NotGitRepoError);
+    });
+
+    it('should throw GitOperationError when branch does not exist', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+
+      // Act & Assert
+      await expect(
+        gitService.deleteBranch('nonexistent', tempDir)
+      ).rejects.toThrow(GitOperationError);
+    });
+
+    it('should throw GitOperationError when trying to delete current branch', async () => {
+      // Arrange
+      tempDir = await createTempGitRepoWithCommit();
+      await gitService.createBranch('feature/current', 'main', tempDir);
+      await gitService.checkoutBranch('feature/current', tempDir);
+
+      // Act & Assert
+      await expect(
+        gitService.deleteBranch('feature/current', tempDir)
+      ).rejects.toThrow(GitOperationError);
+    });
+  });
 });
 
 /**
