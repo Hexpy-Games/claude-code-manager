@@ -90,7 +90,7 @@ export async function createServer(config: ServerConfig): Promise<FastifyInstanc
   const git = new GitService();
   const sessionManager = new SessionManager(db, git);
   const claudeAgent = new ClaudeAgentService(db, {
-    apiKey: config.claudeApiKey,
+    model: 'sonnet', // Use latest Sonnet model
   });
 
   // Decorate Fastify instance with services

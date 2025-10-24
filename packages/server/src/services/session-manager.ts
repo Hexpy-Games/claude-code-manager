@@ -94,8 +94,8 @@ export class SessionManager {
     await this.validateDirectory(options.rootDirectory);
 
     // Generate unique session ID and branch name
-    let sessionId: string;
-    let branchName: string;
+    let sessionId!: string;
+    let branchName!: string;
     let attempts = 0;
 
     // Retry loop in case of branch name collision

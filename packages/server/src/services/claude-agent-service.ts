@@ -1,6 +1,13 @@
 import { nanoid } from 'nanoid';
 import { DatabaseClient } from '../db/client.js';
 import type { Message, InsertMessage } from '../db/types.js';
+import {
+  ClaudeCodeClient,
+  ClaudeCodeError,
+  ClaudeCodeCommandNotFoundError,
+  ClaudeCodeExecutionError,
+  type ClaudeResponse,
+} from './claude-code-client.js';
 
 // Custom error classes
 export class SessionNotFoundError extends Error {
@@ -41,9 +48,9 @@ export class ClaudeAPIError extends Error {
 
 // Configuration interface
 export interface ClaudeAgentServiceConfig {
-  apiKey: string;
   model?: string;
   maxTokens?: number;
+  workingDirectory?: string;
 }
 
 // Result types
@@ -52,70 +59,22 @@ export interface SendMessageResult {
   assistantMessage: Message;
 }
 
-// Claude API types (simplified - adjust based on actual SDK)
-interface ClaudeMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  tool_calls?: any;
-}
-
-interface ClaudeResponse {
-  content: string;
-  tool_calls?: any[] | null;
-}
-
-interface ClaudeStreamChunk {
-  delta: {
-    text?: string;
-    tool_calls?: any[];
-  };
-}
-
-// Mock Claude Agent interface (to be replaced with actual SDK)
-interface ClaudeAgent {
-  sendMessage(params: { messages: ClaudeMessage[]; max_tokens: number }): Promise<ClaudeResponse>;
-  streamMessage(params: {
-    messages: ClaudeMessage[];
-    max_tokens: number;
-  }): AsyncGenerator<ClaudeStreamChunk>;
-}
-
 export class ClaudeAgentService {
-  private readonly agent: ClaudeAgent;
+  private readonly client: ClaudeCodeClient;
   private readonly maxTokens: number;
-  private readonly model: string;
 
   constructor(
     private readonly databaseClient: DatabaseClient,
     private readonly config: ClaudeAgentServiceConfig
   ) {
-    // Validate API key
-    if (!config.apiKey || config.apiKey.trim() === '') {
-      throw new ConfigurationError('API key is required');
-    }
-
     // Set defaults
     this.maxTokens = config.maxTokens ?? 4096;
-    this.model = config.model ?? 'claude-3-5-sonnet-20241022';
 
-    // Initialize Claude Agent
-    // Note: Using dynamic import placeholder - actual SDK initialization would go here
-    this.agent = this.initializeAgent();
-  }
-
-  private initializeAgent(): ClaudeAgent {
-    // This is a placeholder for the actual Claude Agent SDK initialization
-    // In real implementation, this would be:
-    // import { ClaudeAgent } from '@anthropic-ai/claude-agent-sdk';
-    // return new ClaudeAgent({ apiKey: this.config.apiKey, model: this.model });
-
-    // For now, return a mock that will be overridden in tests
-    return {
-      sendMessage: async () => ({ content: '', tool_calls: null }),
-      streamMessage: async function* () {
-        yield { delta: { text: '' } };
-      },
-    };
+    // Initialize Claude Code CLI client
+    this.client = new ClaudeCodeClient({
+      model: config.model ?? 'sonnet', // Default to latest Sonnet
+      workingDirectory: config.workingDirectory,
+    });
   }
 
   /**
@@ -126,16 +85,32 @@ export class ClaudeAgentService {
   }
 
   /**
-   * Get conversation history for a session
+   * Get Claude Code session ID from database session metadata
    */
-  private async getConversationHistory(sessionId: string): Promise<ClaudeMessage[]> {
-    const messages = this.databaseClient.getMessages(sessionId);
+  private getClaudeSessionId(sessionId: string): string | null {
+    const session = this.databaseClient.getSession(sessionId);
+    if (!session || !session.metadata) {
+      return null;
+    }
 
-    return messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-      tool_calls: msg.toolCalls,
-    }));
+    // Check if metadata has claudeSessionId
+    const metadata = session.metadata as Record<string, any>;
+    return metadata.claudeSessionId || null;
+  }
+
+  /**
+   * Store Claude Code session ID in database session metadata
+   */
+  private storeClaudeSessionId(sessionId: string, claudeSessionId: string): void {
+    const session = this.databaseClient.getSession(sessionId);
+    if (!session) {
+      return;
+    }
+
+    const metadata = (session.metadata as Record<string, any>) || {};
+    metadata.claudeSessionId = claudeSessionId;
+
+    this.databaseClient.updateSession(sessionId, { metadata });
   }
 
   /**
@@ -148,28 +123,42 @@ export class ClaudeAgentService {
   }
 
   /**
-   * Handle errors from Claude API
+   * Handle errors from Claude Code CLI
    */
-  private handleAPIError(error: any): never {
-    // Check for rate limit
-    if (error.status === 429) {
-      const retryAfter = error.headers?.['retry-after']
-        ? Number.parseInt(error.headers['retry-after'], 10)
-        : undefined;
-      throw new RateLimitError('Rate limit exceeded', retryAfter);
+  private handleClaudeCodeError(error: any): never {
+    // Command not found - CLI not installed
+    if (error instanceof ClaudeCodeCommandNotFoundError) {
+      throw new ConfigurationError(
+        'Claude Code CLI not found. Please install it: npm install -g @anthropic-ai/claude-code'
+      );
     }
 
-    // Check for network errors
-    if (error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.code === 'ENOTFOUND') {
-      throw new NetworkError(`Network error: ${error.message}`);
-    }
+    // Execution errors from CLI
+    if (error instanceof ClaudeCodeExecutionError) {
+      // Check stderr for rate limit indicators
+      if (error.stderr?.includes('rate limit') || error.stderr?.includes('429')) {
+        throw new RateLimitError('Rate limit exceeded');
+      }
 
-    // Check for API errors
-    if (error.status) {
-      throw new ClaudeAPIError(error.message || 'Claude API error', error.status);
+      // Check for network/connection errors
+      if (
+        error.stderr?.includes('ETIMEDOUT') ||
+        error.stderr?.includes('ECONNRESET') ||
+        error.stderr?.includes('network')
+      ) {
+        throw new NetworkError(`Network error: ${error.message}`);
+      }
+
+      // Generic Claude Code error
+      throw new ClaudeAPIError(error.message);
     }
 
     // Generic error
+    if (error instanceof ClaudeCodeError) {
+      throw new ClaudeAPIError(error.message);
+    }
+
+    // Unknown error
     throw new NetworkError(error.message || 'Unknown error occurred');
   }
 
@@ -186,9 +175,6 @@ export class ClaudeAgentService {
       throw new SessionNotFoundError(`Session not found: ${sessionId}`);
     }
 
-    // Get conversation history BEFORE adding new message
-    const history = await this.getConversationHistory(sessionId);
-
     // Save user message
     const userMessage = this.databaseClient.insertMessage({
       id: this.generateMessageId(),
@@ -198,17 +184,18 @@ export class ClaudeAgentService {
     });
 
     try {
-      // Add current message to history
-      const messagesWithCurrent = [
-        ...history,
-        { role: 'user' as const, content, tool_calls: undefined },
-      ];
+      // Get existing Claude session ID if any
+      const claudeSessionId = this.getClaudeSessionId(sessionId);
 
-      // Call Claude API
-      const response = await this.agent.sendMessage({
-        messages: messagesWithCurrent,
-        max_tokens: this.maxTokens,
+      // Call Claude Code CLI
+      const response = await this.client.sendMessage(content, {
+        sessionId: claudeSessionId || undefined,
       });
+
+      // Store Claude session ID if this is the first message
+      if (!claudeSessionId && response.sessionId) {
+        this.storeClaudeSessionId(sessionId, response.sessionId);
+      }
 
       // Save assistant message
       const assistantMessage = this.databaseClient.insertMessage({
@@ -216,7 +203,7 @@ export class ClaudeAgentService {
         sessionId,
         role: 'assistant',
         content: response.content,
-        toolCalls: response.tool_calls || null,
+        toolCalls: null, // Tool calls not supported yet in CLI mode
       });
 
       return {
@@ -224,8 +211,8 @@ export class ClaudeAgentService {
         assistantMessage,
       };
     } catch (error) {
-      // Handle API errors
-      this.handleAPIError(error);
+      // Handle Claude Code errors
+      this.handleClaudeCodeError(error);
     }
   }
 
@@ -242,9 +229,6 @@ export class ClaudeAgentService {
       throw new SessionNotFoundError(`Session not found: ${sessionId}`);
     }
 
-    // Get conversation history BEFORE adding new message
-    const history = await this.getConversationHistory(sessionId);
-
     // Save user message
     this.databaseClient.insertMessage({
       id: this.generateMessageId(),
@@ -253,30 +237,41 @@ export class ClaudeAgentService {
       content,
     });
 
-    let fullContent = '';
-    let toolCalls: any[] | null = null;
-
     try {
-      // Add current message to history
-      const messagesWithCurrent = [
-        ...history,
-        { role: 'user' as const, content, tool_calls: undefined },
-      ];
+      // Get existing Claude session ID if any
+      const claudeSessionId = this.getClaudeSessionId(sessionId);
 
-      // Stream response from Claude
-      const stream = this.agent.streamMessage({
-        messages: messagesWithCurrent,
-        max_tokens: this.maxTokens,
+      // Stream response from Claude Code CLI
+      const stream = this.client.streamMessage(content, {
+        sessionId: claudeSessionId || undefined,
       });
 
+      let fullContent = '';
+      let newClaudeSessionId = '';
+
+      // Accumulate chunks and stream to caller
       for await (const chunk of stream) {
-        if (chunk.delta.text) {
-          fullContent += chunk.delta.text;
-          yield chunk.delta.text;
+        fullContent += chunk;
+        yield chunk;
+      }
+
+      // The async generator's return value contains session ID
+      // We'll extract it by wrapping the iteration
+      try {
+        const finalResult = await stream.next();
+        if (finalResult.done) {
+          const response = finalResult.value as ClaudeResponse;
+          if (response?.sessionId) {
+            newClaudeSessionId = response.sessionId;
+          }
         }
-        if (chunk.delta.tool_calls) {
-          toolCalls = chunk.delta.tool_calls;
-        }
+      } catch {
+        // Generator already exhausted, which is normal
+      }
+
+      // Store Claude session ID if this is the first message
+      if (!claudeSessionId && newClaudeSessionId) {
+        this.storeClaudeSessionId(sessionId, newClaudeSessionId);
       }
 
       // Save complete assistant message
@@ -285,7 +280,7 @@ export class ClaudeAgentService {
         sessionId,
         role: 'assistant',
         content: fullContent,
-        toolCalls,
+        toolCalls: null, // Tool calls not supported yet in CLI mode
       });
 
       return assistantMessage;
@@ -294,8 +289,8 @@ export class ClaudeAgentService {
       if (error instanceof Error && error.message.includes('Connection')) {
         throw new NetworkError('Stream interrupted');
       }
-      // Handle other API errors
-      this.handleAPIError(error);
+      // Handle other Claude Code errors
+      this.handleClaudeCodeError(error);
     }
   }
 }

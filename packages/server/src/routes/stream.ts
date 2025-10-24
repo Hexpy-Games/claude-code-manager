@@ -5,8 +5,7 @@
  * - WS /sessions/:id/stream - Real-time streaming of Claude responses
  */
 
-import { FastifyInstance } from 'fastify';
-import { SocketStream } from '@fastify/websocket';
+import type { FastifyInstance } from 'fastify';
 import { sessionIdSchema } from '../schemas/index.js';
 import {
   SessionNotFoundError,
@@ -35,13 +34,13 @@ export async function streamRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
     '/sessions/:id/stream',
     { websocket: true },
-    async (connection: SocketStream, request) => {
+    async (connection, request) => {
       const { id: sessionId } = request.params;
 
       // Validate session ID format
       const idValidation = sessionIdSchema.safeParse(sessionId);
       if (!idValidation.success) {
-        connection.socket.close(4400, 'Invalid session ID format');
+        connection.close(4400, 'Invalid session ID format');
         return;
       }
 
@@ -49,11 +48,11 @@ export async function streamRoutes(fastify: FastifyInstance) {
       try {
         const session = await fastify.sessionManager.getSession(sessionId);
         if (!session) {
-          connection.socket.close(4404, 'Session not found');
+          connection.close(4404, 'Session not found');
           return;
         }
       } catch (error) {
-        connection.socket.close(4404, 'Session not found');
+        connection.close(4404, 'Session not found');
         return;
       }
 
@@ -62,10 +61,10 @@ export async function streamRoutes(fastify: FastifyInstance) {
         type: 'connected',
         sessionId,
       };
-      connection.socket.send(JSON.stringify(connectedMessage));
+      connection.send(JSON.stringify(connectedMessage));
 
       // Handle incoming messages
-      connection.socket.on('message', async (rawMessage: Buffer) => {
+      connection.on('message', async (rawMessage: Buffer) => {
         try {
           // Parse client message
           const messageStr = rawMessage.toString('utf-8');
@@ -80,7 +79,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
               message: 'Failed to parse JSON message',
               code: 'INVALID_JSON',
             };
-            connection.socket.send(JSON.stringify(errorMessage));
+            connection.send(JSON.stringify(errorMessage));
             return;
           }
 
@@ -89,7 +88,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
             const pongMessage: ServerMessage = {
               type: 'pong',
             };
-            connection.socket.send(JSON.stringify(pongMessage));
+            connection.send(JSON.stringify(pongMessage));
             return;
           }
 
@@ -101,7 +100,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
               message: `Invalid message type: ${clientMessage.type}`,
               code: 'INVALID_MESSAGE_TYPE',
             };
-            connection.socket.send(JSON.stringify(errorMessage));
+            connection.send(JSON.stringify(errorMessage));
             return;
           }
 
@@ -113,7 +112,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
               message: 'Message content is required',
               code: 'INVALID_MESSAGE',
             };
-            connection.socket.send(JSON.stringify(errorMessage));
+            connection.send(JSON.stringify(errorMessage));
             return;
           }
 
@@ -124,7 +123,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
 
             for await (const chunk of stream) {
               // Check if connection is still open
-              if (connection.socket.readyState !== connection.socket.OPEN) {
+              if (connection.readyState !== connection.OPEN) {
                 break;
               }
 
@@ -134,16 +133,16 @@ export async function streamRoutes(fastify: FastifyInstance) {
                 content: chunk,
                 index: index++,
               };
-              connection.socket.send(JSON.stringify(chunkMessage));
+              connection.send(JSON.stringify(chunkMessage));
             }
 
             // Send completion message
-            if (connection.socket.readyState === connection.socket.OPEN) {
+            if (connection.readyState === connection.OPEN) {
               const doneMessage: ServerMessage = {
                 type: 'done',
                 stopReason: 'end_turn',
               };
-              connection.socket.send(JSON.stringify(doneMessage));
+              connection.send(JSON.stringify(doneMessage));
             }
           } catch (error) {
             // Handle service errors
@@ -181,7 +180,7 @@ export async function streamRoutes(fastify: FastifyInstance) {
               message: errorMessage,
               code: errorCode,
             };
-            connection.socket.send(JSON.stringify(errorResponse));
+            connection.send(JSON.stringify(errorResponse));
           }
         } catch (error) {
           // Catch-all for unexpected errors
@@ -191,20 +190,20 @@ export async function streamRoutes(fastify: FastifyInstance) {
             message: 'An internal error occurred',
             code: 'INTERNAL_ERROR',
           };
-          connection.socket.send(JSON.stringify(errorMessage));
+          connection.send(JSON.stringify(errorMessage));
         }
       });
 
       // Handle connection close
-      connection.socket.on('close', () => {
+      connection.on('close', () => {
         // Clean up resources
         // No specific cleanup needed as Fastify handles this
         fastify.log.info(`WebSocket connection closed for session: ${sessionId}`);
       });
 
       // Handle connection errors
-      connection.socket.on('error', (error) => {
-        fastify.log.error(`WebSocket error for session ${sessionId}:`, error);
+      connection.on('error', (error: Error) => {
+        fastify.log.error({ err: error, sessionId }, 'WebSocket error');
       });
     }
   );
