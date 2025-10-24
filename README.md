@@ -177,42 +177,53 @@ main
 - Projects must use Git
 - If not initialized, app will prompt to run `git init`
 
-## Roadmap
+## Current Status & Roadmap
 
-### Phase 1: Foundation (MVP)
-- [ ] Project setup and monorepo configuration
-- [ ] Backend API with session management
-- [ ] Git integration service
-- [ ] Basic desktop UI
-- [ ] Single session support
-- [ ] Message persistence
+> **Latest**: Phase 1 Complete + Backend Enhancements ✅
+> **Next**: Phase 2 - Desktop UI (Tauri)
+> **Details**: See [PROGRESS.md](./PROGRESS.md) for comprehensive status
 
-### Phase 2: Core Features
-- [ ] Multi-session support
-- [ ] Session switching
-- [ ] Git branch management UI
-- [ ] Settings management
-- [ ] File explorer
-- [ ] Streaming responses
+### ✅ Phase 1: Backend Core (COMPLETE)
+- ✅ Project setup and monorepo configuration
+- ✅ Backend API with session management (CRUD, switch)
+- ✅ Git integration service (branches, status, checkout)
+- ✅ Claude Code CLI integration (headless mode)
+- ✅ Message persistence (SQLite)
+- ✅ WebSocket streaming (real-time responses)
+- ✅ REST API with validation (Fastify + Zod)
+- ✅ **BONUS**: Git operations (merge, conflict detection, branch deletion)
+- ✅ **BONUS**: Enhanced settings management (get all, delete)
+- **Tests**: 232 passing, 5 skipped
 
-### Phase 3: Polish
-- [ ] Enhanced UI/UX
+### ⏳ Phase 2: Desktop UI Basics (NEXT)
+- [ ] Tauri project setup (React + TypeScript)
+- [ ] API client (REST + WebSocket)
+- [ ] Session list component with state management
+- [ ] Chat interface with streaming
+- [ ] Settings panel UI
+- [ ] E2E integration tests
+
+### 📅 Phase 3: MVP Polish
+- [ ] Loading & error states
+- [ ] Performance optimization (virtualization)
+- [ ] Data persistence improvements
 - [ ] Keyboard shortcuts
-- [ ] System tray integration
-- [ ] Error handling and recovery
-- [ ] Performance optimization
+- [ ] Visual polish and animations
+- [ ] Comprehensive testing
 
-### Phase 4: Self-Hosted
-- [ ] Web client
+### 📅 Phase 4: Self-Hosted
+- [ ] Web client (port desktop UI)
 - [ ] Multi-device access
-- [ ] mDNS discovery
+- [ ] mDNS discovery for LAN
 - [ ] Optional authentication
-- [ ] Mobile-friendly UI
+- [ ] Mobile-friendly responsive design
 
 ## Documentation
 
+- **[PROGRESS.md](./PROGRESS.md)** - Current development status and roadmap
 - **[CLAUDE.md](./CLAUDE.md)** - Project context for AI assistants
 - **[GUIDELINES.md](./GUIDELINES.md)** - Development workflow and standards
+- **[MVP-ROADMAP.md](./docs/MVP-ROADMAP.md)** - MVP scope and timeline
 - **[docs/features/](./docs/features/)** - Feature specifications
 - **[docs/architecture/](./docs/architecture/)** - System design
 - **[docs/development/](./docs/development/)** - Development guides
