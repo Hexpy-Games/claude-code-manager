@@ -22,6 +22,7 @@ describe('NewSessionDialog', () => {
     id: 'sess_new',
     title: 'New Session',
     rootDirectory: '/test/path',
+      workspacePath: '/tmp/claude-sessions/test/path',
     branchName: 'session/new',
     baseBranch: 'main',
     gitStatus: null,

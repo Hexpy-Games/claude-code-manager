@@ -118,12 +118,20 @@ export async function streamRoutes(fastify: FastifyInstance) {
 
           // Stream response from Claude
           try {
+            fastify.log.info({ sessionId, messageContent: clientMessage.content }, 'Starting Claude Code streaming');
+            console.log(`[${new Date().toISOString()}] 🚀 Claude Code started processing message for session: ${sessionId}`);
+
             const stream = fastify.claudeAgent.streamMessage(sessionId, clientMessage.content);
             let index = 0;
+            let totalChunks = 0;
+            let wasInterrupted = false;
 
             for await (const chunk of stream) {
               // Check if connection is still open
               if (connection.readyState !== connection.OPEN) {
+                console.log(`[${new Date().toISOString()}] ⚠️ WebSocket closed by client, stopping stream at chunk ${index}`);
+                console.log(`[${new Date().toISOString()}] 💾 User pressed Stop/ESC - partial content will be saved by service`);
+                wasInterrupted = true;
                 break;
               }
 
@@ -133,16 +141,30 @@ export async function streamRoutes(fastify: FastifyInstance) {
                 content: chunk,
                 index: index++,
               };
-              connection.send(JSON.stringify(chunkMessage));
+              const chunkJson = JSON.stringify(chunkMessage);
+              connection.send(chunkJson);
+              totalChunks++;
+
+              // Log every 10 chunks to avoid spam
+              if (totalChunks % 10 === 0) {
+                console.log(`[${new Date().toISOString()}] 📤 Sent chunk ${index}, content preview: "${chunk.substring(0, 30)}..."`);
+              }
             }
 
-            // Send completion message
-            if (connection.readyState === connection.OPEN) {
-              const doneMessage: ServerMessage = {
-                type: 'done',
-                stopReason: 'end_turn',
-              };
-              connection.send(JSON.stringify(doneMessage));
+            if (wasInterrupted) {
+              console.log(`[${new Date().toISOString()}] 🛑 Stream interrupted after ${totalChunks} chunks - partial message saved to database`);
+            } else {
+              console.log(`[${new Date().toISOString()}] ✅ Claude Code finished streaming. Total chunks: ${totalChunks}`);
+
+              // Send completion message only if not interrupted
+              if (connection.readyState === connection.OPEN) {
+                const doneMessage: ServerMessage = {
+                  type: 'done',
+                  stopReason: 'end_turn',
+                };
+                connection.send(JSON.stringify(doneMessage));
+                console.log(`[${new Date().toISOString()}] 🏁 Sent 'done' event to client`);
+              }
             }
           } catch (error) {
             // Handle service errors

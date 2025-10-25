@@ -109,10 +109,12 @@ export class WebSocketClient {
     return new Promise((resolve, reject) => {
       try {
         const url = `${this.options.baseUrl}/sessions/${sessionId}/stream`;
+        console.log('[WebSocketClient] 🔌 Connecting to:', url);
         this.ws = new WebSocket(url);
 
         // Set up event handlers
         this.ws.onopen = () => {
+          console.log('[WebSocketClient] ✅ Connection opened');
           this.handleOpen();
           resolve();
         };
@@ -122,14 +124,17 @@ export class WebSocketClient {
         };
 
         this.ws.onerror = () => {
+          console.error('[WebSocketClient] ❌ Connection error');
           this.handleError();
           reject(new Error('WebSocket connection failed'));
         };
 
         this.ws.onclose = (event) => {
+          console.log(`[WebSocketClient] 🔌 Connection closed: ${event.code} - ${event.reason}`);
           this.handleClose(event);
         };
       } catch (error) {
+        console.error('[WebSocketClient] ❌ Failed to create WebSocket:', error);
         reject(error);
       }
     });
@@ -169,15 +174,17 @@ export class WebSocketClient {
    */
   sendMessage(content: string): void {
     if (!this.isConnected()) {
+      console.error('[WebSocketClient] ❌ Cannot send message - not connected');
       throw new Error('WebSocket is not connected');
     }
 
-    this.ws?.send(
-      JSON.stringify({
-        type: 'message',
-        content,
-      })
-    );
+    const message = JSON.stringify({
+      type: 'message',
+      content,
+    });
+    console.log('[WebSocketClient] 📤 Sending message to server:', content.substring(0, 100));
+    this.ws?.send(message);
+    console.log('[WebSocketClient] ✅ Message sent to WebSocket');
   }
 
   /**
@@ -246,13 +253,17 @@ export class WebSocketClient {
    */
   private handleMessage(event: MessageEvent): void {
     try {
+      console.log('[WebSocketClient] 📨 Raw WebSocket message received:', event.data.substring(0, 200));
       const message = JSON.parse(event.data) as StreamMessage;
+      console.log('[WebSocketClient] ✅ Message parsed, type:', message.type);
 
       // Emit to all handlers
+      console.log(`[WebSocketClient] 📢 Emitting to ${this.messageHandlers.length} handler(s)`);
       for (const handler of this.messageHandlers) {
         handler(message);
       }
     } catch (error) {
+      console.error('[WebSocketClient] ❌ Failed to parse message:', error);
       const parseError = new Error(
         `Failed to parse WebSocket message: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

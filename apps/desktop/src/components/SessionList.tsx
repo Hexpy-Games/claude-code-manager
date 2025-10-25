@@ -15,14 +15,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { RestClient } from '@/services/api/rest-client';
 import { useSessionStore } from '@/stores/sessionStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { NewSessionDialog } from './NewSessionDialog';
 import { SessionItem } from './SessionItem';
 
@@ -32,9 +32,10 @@ interface SessionListProps {
 
 export function SessionList({ client }: SessionListProps) {
   const queryClient = useQueryClient();
-  const { setSessions, setActiveSessionId } = useSessionStore();
+  const { setSessions, setActiveSessionId, activeSessionId } = useSessionStore();
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Fetch sessions
   const {
@@ -66,8 +67,13 @@ export function SessionList({ client }: SessionListProps) {
   // Delete session mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => client.deleteSession(id, false),
-    onSuccess: () => {
+    onSuccess: (_, deletedSessionId) => {
+      // If deleted session was active, clear active session
+      if (deletedSessionId === activeSessionId) {
+        setActiveSessionId(null);
+      }
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['messages'] });
       setDeleteSessionId(null);
     },
   });
@@ -92,6 +98,14 @@ export function SessionList({ client }: SessionListProps) {
 
   // Sort sessions by updatedAt descending
   const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+
+  // Virtual scrolling setup
+  const rowVirtualizer = useVirtualizer({
+    count: sortedSessions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 88, // Estimated height of each SessionItem (80px + 8px gap)
+    overscan: 5, // Render 5 extra items above and below viewport
+  });
 
   return (
     <div className="flex flex-col h-full">
@@ -125,18 +139,42 @@ export function SessionList({ client }: SessionListProps) {
           </div>
         </div>
       ) : (
-        <ScrollArea className="flex-1">
-          <div className="p-3 space-y-2">
-            {sortedSessions.map((session) => (
-              <SessionItem
-                key={session.id}
-                session={session}
-                onSwitch={handleSwitch}
-                onDelete={handleDeleteClick}
-              />
-            ))}
+        <div ref={parentRef} className="flex-1 overflow-auto">
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const session = sortedSessions[virtualRow.index];
+              return (
+                <div
+                  key={session.id}
+                  data-index={virtualRow.index}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                    padding: '0 12px',
+                  }}
+                >
+                  <div className="mb-2">
+                    <SessionItem
+                      session={session}
+                      onSwitch={handleSwitch}
+                      onDelete={handleDeleteClick}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </ScrollArea>
+        </div>
       )}
 
       <NewSessionDialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen} client={client} />

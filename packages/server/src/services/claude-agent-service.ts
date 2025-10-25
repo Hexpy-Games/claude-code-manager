@@ -283,6 +283,11 @@ export class ClaudeAgentService {
       content,
     });
 
+    let fullContent = '';
+    let newClaudeSessionId = '';
+    let streamCompleted = false;
+    let assistantMessage: Message | null = null;
+
     try {
       // Get existing Claude session ID if any
       const claudeSessionId = this.getClaudeSessionId(sessionId);
@@ -292,14 +297,14 @@ export class ClaudeAgentService {
         sessionId: claudeSessionId || undefined,
       });
 
-      let fullContent = '';
-      let newClaudeSessionId = '';
-
       // Accumulate chunks and stream to caller
       for await (const chunk of stream) {
         fullContent += chunk;
         yield chunk;
       }
+
+      // Mark stream as completed successfully
+      streamCompleted = true;
 
       // The async generator's return value contains session ID
       // We'll extract it by wrapping the iteration
@@ -321,7 +326,7 @@ export class ClaudeAgentService {
       }
 
       // Save complete assistant message
-      const assistantMessage = this.databaseClient.insertMessage({
+      assistantMessage = this.databaseClient.insertMessage({
         id: this.generateMessageId(),
         sessionId,
         role: 'assistant',
@@ -331,12 +336,44 @@ export class ClaudeAgentService {
 
       return assistantMessage;
     } catch (error) {
+      console.log(`[ClaudeAgentService] Stream interrupted or error occurred. Partial content length: ${fullContent.length}`);
+
+      // Save partial content if we have any (stream was interrupted)
+      if (fullContent.length > 0 && !assistantMessage) {
+        console.log('[ClaudeAgentService] Saving partial assistant message before throwing error');
+        assistantMessage = this.databaseClient.insertMessage({
+          id: this.generateMessageId(),
+          sessionId,
+          role: 'assistant',
+          content: fullContent,
+          toolCalls: null,
+        });
+      }
+
       // Stream interrupted - wrap error
       if (error instanceof Error && error.message.includes('Connection')) {
         throw new NetworkError('Stream interrupted');
       }
       // Handle other Claude Code errors
       this.handleClaudeCodeError(error);
+    } finally {
+      // IMPORTANT: Save partial content if stream was interrupted and we haven't saved yet
+      // This ensures interrupted messages (ESC/Stop button) are preserved
+      if (!streamCompleted && fullContent.length > 0 && !assistantMessage) {
+        console.log('[ClaudeAgentService] Stream interrupted - saving partial content in finally block');
+        try {
+          this.databaseClient.insertMessage({
+            id: this.generateMessageId(),
+            sessionId,
+            role: 'assistant',
+            content: fullContent,
+            toolCalls: null,
+          });
+          console.log(`[ClaudeAgentService] ✅ Saved partial message (${fullContent.length} chars)`);
+        } catch (saveError) {
+          console.error('[ClaudeAgentService] ❌ Failed to save partial content:', saveError);
+        }
+      }
     }
   }
 }
