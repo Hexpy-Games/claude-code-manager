@@ -303,4 +303,147 @@ describe('ChatInterface', () => {
       });
     });
   });
+
+  describe('Draft Message Persistence', () => {
+    beforeEach(() => {
+      // Clear localStorage before each test
+      localStorage.clear();
+    });
+
+    it('should save draft message to localStorage when typing', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+      });
+
+      const textarea = screen.getByRole('textbox');
+      await user.type(textarea, 'Draft message');
+
+      // Wait for draft to be saved
+      await waitFor(() => {
+        const draftKey = 'draft_sess_1';
+        const savedDraft = localStorage.getItem(draftKey);
+        expect(savedDraft).toBe('Draft message');
+      });
+    });
+
+    it('should load draft message from localStorage when session changes', async () => {
+      // Pre-populate localStorage with draft
+      const draftKey = 'draft_sess_1';
+      localStorage.setItem(draftKey, 'Saved draft');
+
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Saved draft');
+      });
+    });
+
+    it('should clear draft after sending message', async () => {
+      const user = userEvent.setup();
+
+      // Pre-populate localStorage with draft
+      const draftKey = 'draft_sess_1';
+      localStorage.setItem(draftKey, 'Draft to send');
+
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+      });
+
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textarea.value).toBe('Draft to send');
+
+      const sendButton = screen.getByRole('button');
+      await user.click(sendButton);
+
+      // Draft should be cleared from both state and localStorage
+      await waitFor(() => {
+        expect(textarea.value).toBe('');
+        expect(localStorage.getItem(draftKey)).toBeNull();
+      });
+    });
+
+    it('should handle switching sessions with different drafts', async () => {
+      // Set up drafts for two different sessions
+      localStorage.setItem('draft_sess_1', 'Draft for session 1');
+      localStorage.setItem('draft_sess_2', 'Draft for session 2');
+
+      const { rerender } = renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      // Check first session draft
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Draft for session 1');
+      });
+
+      // Switch to second session
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ChatInterface sessionId="sess_2" client={mockRestClient} />
+        </QueryClientProvider>
+      );
+
+      // Check second session draft
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Draft for session 2');
+      });
+    });
+
+    it('should clear draft when switching to session with no draft', async () => {
+      const user = userEvent.setup();
+
+      // Set up draft for first session
+      localStorage.setItem('draft_sess_1', 'Draft for session 1');
+
+      const { rerender } = renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      // Check first session draft
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Draft for session 1');
+      });
+
+      // Switch to second session (no draft)
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ChatInterface sessionId="sess_2" client={mockRestClient} />
+        </QueryClientProvider>
+      );
+
+      // Draft should be cleared
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('');
+      });
+    });
+
+    it('should clear draft when sessionId becomes null', async () => {
+      // Set up draft for session
+      localStorage.setItem('draft_sess_1', 'Draft for session 1');
+
+      const { rerender } = renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      // Check session draft
+      await waitFor(() => {
+        const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Draft for session 1');
+      });
+
+      // Clear session
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <ChatInterface sessionId={null} client={mockRestClient} />
+        </QueryClientProvider>
+      );
+
+      // Should show "No Session Selected" screen
+      expect(screen.getByText(/no session selected/i)).toBeInTheDocument();
+    });
+  });
 });

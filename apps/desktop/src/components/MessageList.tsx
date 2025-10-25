@@ -11,7 +11,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Message } from '@/services/api/types';
 import { Bot, Loader2, User } from 'lucide-react';
-import { useEffect, useRef, useMemo, memo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -72,6 +72,8 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false);
   const scrollCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRestoringScrollRef = useRef(false);
+  const scrollSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get the actual scrollable viewport element (Radix UI ScrollArea structure)
   const getScrollElement = (): HTMLElement | null => {
@@ -100,7 +102,7 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
     });
   };
 
-  // Detect if user is manually scrolling
+  // Detect if user is manually scrolling and save scroll position
   const handleScroll = (event: Event) => {
     const scrollElement = event.target as HTMLElement;
     if (!scrollElement) return;
@@ -121,14 +123,46 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
         isUserScrollingRef.current = false;
       }
     }, 2000);
+
+    // Save scroll position to localStorage (debounced to avoid excessive writes)
+    // Don't save if we're currently restoring scroll position
+    if (sessionId && !isRestoringScrollRef.current) {
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+      }
+      scrollSaveTimeoutRef.current = setTimeout(() => {
+        const scrollKey = `scroll_${sessionId}`;
+        localStorage.setItem(scrollKey, String(scrollTop));
+      }, 500); // Save after 500ms of no scrolling
+    }
   };
 
-  // Scenario 1: When user selects a session, scroll to bottom
+  // Scenario 1: When user selects a session, restore scroll position or scroll to bottom
   useEffect(() => {
     if (sessionId && messages.length > 0) {
-      console.log('[MessageList] Session changed, scrolling to bottom');
-      isUserScrollingRef.current = false; // Reset user scrolling flag
-      scrollToBottom(true); // Force scroll on session change
+      const scrollKey = `scroll_${sessionId}`;
+      const savedScrollPosition = localStorage.getItem(scrollKey);
+
+      if (savedScrollPosition) {
+        // Restore saved scroll position
+        console.log('[MessageList] Session changed, restoring scroll position:', savedScrollPosition);
+        isRestoringScrollRef.current = true;
+        requestAnimationFrame(() => {
+          const scrollElement = getScrollElement();
+          if (scrollElement) {
+            scrollElement.scrollTop = Number(savedScrollPosition);
+            // Wait a bit before allowing scroll saves again
+            setTimeout(() => {
+              isRestoringScrollRef.current = false;
+            }, 100);
+          }
+        });
+      } else {
+        // No saved position, scroll to bottom
+        console.log('[MessageList] Session changed, scrolling to bottom');
+        isUserScrollingRef.current = false; // Reset user scrolling flag
+        scrollToBottom(true); // Force scroll on session change
+      }
     }
   }, [sessionId]);
 
@@ -189,6 +223,9 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
       if (scrollCheckTimeoutRef.current) {
         clearTimeout(scrollCheckTimeoutRef.current);
       }
+      if (scrollSaveTimeoutRef.current) {
+        clearTimeout(scrollSaveTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -203,7 +240,7 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
             <div
               key={message.id}
               data-message-id={message.id}
-              className="w-full py-4 px-6 border-b border-border hover:bg-muted/30 transition-colors"
+              className="w-full py-4 px-6 border-b border-border hover:bg-muted/30 transition-colors animate-in fade-in duration-300"
             >
               <div className="flex gap-3 items-start">
                 <Avatar className="h-6 w-6 mt-1">

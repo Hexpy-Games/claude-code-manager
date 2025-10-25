@@ -26,6 +26,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [streamingMessage, setStreamingMessage] = useState<Message | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [draftMessage, setDraftMessage] = useState('');
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const streamingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isStreamingRef = useRef(false);
@@ -33,6 +34,34 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
   const contentBufferRef = useRef('');
   const renderDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRenderTimeRef = useRef<number>(0);
+
+  // Load draft message from localStorage when session changes
+  useEffect(() => {
+    if (!sessionId) {
+      setDraftMessage('');
+      return;
+    }
+
+    const draftKey = `draft_${sessionId}`;
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      setDraftMessage(savedDraft);
+    } else {
+      setDraftMessage('');
+    }
+  }, [sessionId]);
+
+  // Save draft message to localStorage when it changes
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const draftKey = `draft_${sessionId}`;
+    if (draftMessage) {
+      localStorage.setItem(draftKey, draftMessage);
+    } else {
+      localStorage.removeItem(draftKey);
+    }
+  }, [draftMessage, sessionId]);
 
   // Helper function to clear streaming state and refresh
   const clearStreamingState = () => {
@@ -420,7 +449,12 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
 
       {/* Message Input */}
       <MessageInput
-        onSend={(msg) => sendMutation.mutate(msg)}
+        value={draftMessage}
+        onChange={setDraftMessage}
+        onSend={(msg) => {
+          sendMutation.mutate(msg);
+          setDraftMessage(''); // Clear draft after sending
+        }}
         onStop={handleStopStreaming}
         disabled={sendMutation.isPending}
         isStreaming={isStreaming}

@@ -2,8 +2,10 @@
  * App Component Tests
  */
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type React from 'react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import App from './App';
 
 // Mock react-syntax-highlighter
@@ -100,4 +102,55 @@ describe('App', () => {
       expect(localStorage.getItem(layoutKey) !== undefined).toBe(true);
     });
   });
+
+  describe('Keyboard Shortcuts', () => {
+    it('should render app with keyboard shortcuts registered', () => {
+      render(<App />);
+
+      // App should render without crashing with keyboard shortcuts registered
+      expect(screen.getByText('Claude Code Manager')).toBeInTheDocument();
+
+      // NOTE: react-hotkeys-hook shortcuts are difficult to test in JSDOM
+      // These are tested manually and in E2E tests instead:
+      // - Cmd+, (Settings)
+      // - Cmd+N (New Session)
+      // - Cmd+W (Close Session)
+      // - Cmd+1-9 (Switch Session)
+    });
+
+    it('should open settings dialog when settings button clicked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const settingsButton = screen.getByRole('button', { name: /open settings/i });
+      await user.click(settingsButton);
+
+      // Settings dialog should open
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+    });
+
+    it('should open new session dialog when new button clicked', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+
+      const newButton = screen.getByRole('button', { name: /new session/i });
+      await user.click(newButton);
+
+      // New session dialog should open
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+    });
+  });
 });
+
+// Helper to render with userEvent
+function renderWithUser(component: React.ReactElement) {
+  const user = userEvent.setup();
+  return {
+    user,
+    ...render(component),
+  };
+}

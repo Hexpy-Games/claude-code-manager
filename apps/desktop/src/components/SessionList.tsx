@@ -28,12 +28,23 @@ import { SessionItem } from './SessionItem';
 
 interface SessionListProps {
   client: RestClient;
+  isNewDialogOpen?: boolean;
+  onNewDialogOpenChange?: (open: boolean) => void;
 }
 
-export function SessionList({ client }: SessionListProps) {
+export function SessionList({
+  client,
+  isNewDialogOpen: externalIsNewDialogOpen,
+  onNewDialogOpenChange: externalOnNewDialogOpenChange,
+}: SessionListProps) {
   const queryClient = useQueryClient();
   const { setSessions, setActiveSessionId, activeSessionId } = useSessionStore();
-  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+
+  // Use external state if provided, otherwise use local state
+  const [localIsNewDialogOpen, setLocalIsNewDialogOpen] = useState(false);
+  const isNewDialogOpen = externalIsNewDialogOpen ?? localIsNewDialogOpen;
+  const setIsNewDialogOpen = externalOnNewDialogOpenChange ?? setLocalIsNewDialogOpen;
+
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 

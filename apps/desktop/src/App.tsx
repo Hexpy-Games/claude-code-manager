@@ -6,6 +6,7 @@
  * - Chat interface (main area)
  * - Settings panel (toggleable)
  * - Toast notifications (Sonner)
+ * - Global keyboard shortcuts
  */
 
 import { ChatInterface } from '@/components/ChatInterface';
@@ -17,10 +18,11 @@ import { Separator } from '@/components/ui/separator';
 import { Toaster } from '@/components/ui/sonner';
 import { RestClient } from '@/services/api/rest-client';
 import { useSessionStore } from '@/stores/sessionStore';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 // Create clients
 const queryClient = new QueryClient({
@@ -39,7 +41,49 @@ const restClient = new RestClient({
 
 function AppContent() {
   const [showSettings, setShowSettings] = useState(false);
+  const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
   const activeSessionId = useSessionStore((state) => state.activeSessionId);
+  const setActiveSessionId = useSessionStore((state) => state.setActiveSessionId);
+
+  // Fetch sessions for keyboard shortcuts (Cmd+1-9)
+  const { data: sessions = [] } = useQuery({
+    queryKey: ['sessions'],
+    queryFn: () => restClient.listSessions(),
+  });
+
+  // Global Keyboard Shortcuts
+
+  // Cmd/Ctrl+, - Open settings
+  useHotkeys('mod+comma', (e) => {
+    e.preventDefault();
+    setShowSettings(true);
+  }, { enableOnFormTags: true });
+
+  // Cmd/Ctrl+N - New session
+  useHotkeys('mod+n', (e) => {
+    e.preventDefault();
+    setShowNewSessionDialog(true);
+  }, { enableOnFormTags: true });
+
+  // Cmd/Ctrl+W - Close/deselect active session
+  useHotkeys('mod+w', (e) => {
+    e.preventDefault();
+    if (activeSessionId) {
+      setActiveSessionId(null);
+    }
+  }, { enableOnFormTags: true });
+
+  // Cmd/Ctrl+1-9 - Switch to session by number
+  for (let i = 1; i <= 9; i++) {
+    useHotkeys(`mod+${i}`, (e) => {
+      e.preventDefault();
+      const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+      const targetSession = sortedSessions[i - 1];
+      if (targetSession) {
+        setActiveSessionId(targetSession.id);
+      }
+    }, { enableOnFormTags: true }, [sessions]);
+  }
 
   return (
     <>
@@ -63,7 +107,11 @@ function AppContent() {
                 <Separator />
               </div>
               <div className="flex-1 overflow-y-auto min-h-0">
-                <SessionList client={restClient} />
+                <SessionList
+                  client={restClient}
+                  isNewDialogOpen={showNewSessionDialog}
+                  onNewDialogOpenChange={setShowNewSessionDialog}
+                />
               </div>
             </div>
           </Panel>
