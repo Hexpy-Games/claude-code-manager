@@ -45,6 +45,10 @@ export async function messagesRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /sessions/:id/messages - Send message to Claude
+   *
+   * NOTE: This endpoint blocks until Claude responds (can take 30-120 seconds).
+   * For long responses, the frontend should use WebSocket streaming instead.
+   * The frontend has a 2-minute timeout and will refetch on timeout.
    */
   fastify.post<{ Params: { id: string }; Body: SendMessageRequest }>(
     '/sessions/:id/messages',
@@ -75,7 +79,7 @@ export async function messagesRoutes(fastify: FastifyInstance) {
 
       const { content } = validationResult.data;
 
-      // Send message via ClaudeAgentService
+      // Send message via ClaudeAgentService (blocking)
       const result = await fastify.claudeAgent.sendMessage(id, content);
 
       return reply.send({

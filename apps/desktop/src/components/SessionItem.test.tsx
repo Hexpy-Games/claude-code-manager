@@ -13,6 +13,7 @@ describe('SessionItem', () => {
     id: 'sess_123',
     title: 'Test Session',
     rootDirectory: '/test/path',
+      workspacePath: '/tmp/claude-sessions/test/path',
     branchName: 'session/test',
     baseBranch: 'main',
     gitStatus: null,

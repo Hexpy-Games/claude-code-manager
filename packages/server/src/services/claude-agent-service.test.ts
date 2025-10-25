@@ -611,7 +611,7 @@ describe('ClaudeAgentService', () => {
       }).rejects.toThrow(SessionNotFoundError);
     });
 
-    it('should throw NetworkError when stream is interrupted', async () => {
+    it('should save partial content when stream is interrupted (ESC/Stop button)', async () => {
       // Arrange
       const mockDb = createMockDatabaseClient();
       const service = new ClaudeAgentService(mockDb, {});
@@ -634,7 +634,7 @@ describe('ClaudeAgentService', () => {
       mockDb.insertMessage = vi.fn().mockReturnValue({} as Message);
 
       async function* mockStream() {
-        yield { delta: { text: 'Hello' } };
+        yield 'Hello';
         throw new Error('Connection lost');
       }
 
@@ -648,11 +648,18 @@ describe('ClaudeAgentService', () => {
         }
       }).rejects.toThrow(NetworkError);
 
-      // Partial response should NOT be saved
-      expect(mockDb.insertMessage).toHaveBeenCalledTimes(1); // Only user message
+      // Partial response SHOULD be saved (changed behavior to match ESC/Stop button)
+      expect(mockDb.insertMessage).toHaveBeenCalledTimes(2); // User message + partial assistant message
+      expect(mockDb.insertMessage).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          role: 'assistant',
+          content: 'Hello', // Partial content preserved
+        })
+      );
     });
 
-    it('should not save assistant message if stream fails', async () => {
+    it('should save partial content even if stream fails (ESC/Stop behavior)', async () => {
       // Arrange
       const mockDb = createMockDatabaseClient();
       const service = new ClaudeAgentService(mockDb, {});
@@ -675,7 +682,7 @@ describe('ClaudeAgentService', () => {
       mockDb.insertMessage = vi.fn().mockReturnValue({} as Message);
 
       async function* mockStream() {
-        yield { delta: { text: 'Partial' } };
+        yield 'Partial';
         throw new Error('Stream error');
       }
 
@@ -692,10 +699,18 @@ describe('ClaudeAgentService', () => {
       }
 
       // Assert
-      // Only user message saved, no assistant message
-      expect(mockDb.insertMessage).toHaveBeenCalledTimes(1);
-      expect(mockDb.insertMessage).toHaveBeenCalledWith(
+      // Both user message and partial assistant message should be saved
+      expect(mockDb.insertMessage).toHaveBeenCalledTimes(2);
+      expect(mockDb.insertMessage).toHaveBeenNthCalledWith(
+        1,
         expect.objectContaining({ role: 'user' })
+      );
+      expect(mockDb.insertMessage).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          role: 'assistant',
+          content: 'Partial', // Partial content preserved
+        })
       );
     });
   });
