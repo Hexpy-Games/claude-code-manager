@@ -31,6 +31,56 @@ vi.mock('react-syntax-highlighter/dist/cjs/styles/hljs/atom-one-dark', () => ({ 
 
 vi.mock('@/services/api/rest-client');
 
+// Mock Zustand store
+const mockSessions = [
+  {
+    id: 'sess_1',
+    title: 'Test Project',
+    rootDirectory: '/test/path',
+    workspacePath: '/tmp/test',
+    branchName: 'session/sess_1',
+    baseBranch: 'main',
+    gitStatus: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastMessageAt: Date.now(),
+    metadata: null,
+    isActive: true,
+  },
+  {
+    id: 'sess_2',
+    title: 'Another Project',
+    rootDirectory: '/another/path',
+    workspacePath: '/tmp/another',
+    branchName: 'session/sess_2',
+    baseBranch: 'main',
+    gitStatus: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastMessageAt: Date.now(),
+    metadata: null,
+    isActive: false,
+  },
+];
+
+vi.mock('@/stores/sessionStore', () => ({
+  useSessionStore: vi.fn((selector) =>
+    selector
+      ? selector({
+          sessions: mockSessions,
+          activeSessionId: 'sess_1',
+          setActiveSessionId: vi.fn(),
+          setSessions: vi.fn(),
+        })
+      : {
+          sessions: mockSessions,
+          activeSessionId: 'sess_1',
+          setActiveSessionId: vi.fn(),
+          setSessions: vi.fn(),
+        }
+  ),
+}));
+
 describe('ChatInterface', () => {
   let queryClient: QueryClient;
   let mockRestClient: RestClient;
@@ -444,6 +494,104 @@ describe('ChatInterface', () => {
 
       // Should show "No Session Selected" screen
       expect(screen.getByText(/no session selected/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Chat Header with Session Name and Agent Status', () => {
+    it('should display session name instead of generic "Chat" in header', async () => {
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Project')).toBeInTheDocument();
+      });
+
+      // Should not show generic "Chat" label
+      expect(screen.queryByText(/^Chat$/)).not.toBeInTheDocument();
+    });
+
+    it('should show "Idle" status when not streaming', async () => {
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Idle/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show "Writing..." status when streaming message', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+      });
+
+      // Send message to start streaming
+      const textarea = screen.getByRole('textbox');
+      await user.type(textarea, 'Test message');
+      const sendButton = screen.getByRole('button');
+      await user.click(sendButton);
+
+      // Status should change to "Writing..."
+      await waitFor(() => {
+        expect(screen.getByText(/Writing/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should return to "Idle" status after streaming completes', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+      });
+
+      // Initially idle
+      expect(screen.getByText(/Idle/i)).toBeInTheDocument();
+
+      // Send message
+      const textarea = screen.getByRole('textbox');
+      await user.type(textarea, 'Test');
+      const sendButton = screen.getByRole('button');
+      await user.click(sendButton);
+
+      // Should show Writing
+      await waitFor(() => {
+        expect(screen.getByText(/Writing/i)).toBeInTheDocument();
+      });
+
+      // After streaming completes, should return to Idle
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Idle/i)).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
+    });
+
+    it('should truncate very long session names', async () => {
+      // Update mock to return long session name
+      vi.mocked(require('@/stores/sessionStore').useSessionStore).mockImplementation((selector: any) =>
+        selector
+          ? selector({
+              sessions: [
+                {
+                  ...mockSessions[0],
+                  title: 'This is a very long session name that should definitely be truncated in the UI',
+                },
+              ],
+              activeSessionId: 'sess_1',
+              setActiveSessionId: vi.fn(),
+              setSessions: vi.fn(),
+            })
+          : {}
+      );
+
+      const { container } = renderWithClient(<ChatInterface sessionId="sess_1" client={mockRestClient} />);
+
+      await waitFor(() => {
+        const headerElement = container.querySelector('.truncate, [class*="truncate"]');
+        expect(headerElement).toBeInTheDocument();
+      });
     });
   });
 });

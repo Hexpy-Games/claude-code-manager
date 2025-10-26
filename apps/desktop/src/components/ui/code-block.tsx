@@ -44,10 +44,21 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
           borderRadius: 0,
           fontSize: '0.875rem',
           lineHeight: '1.5',
+          background: 'rgb(40, 44, 52)', // Unified background color from atom-one-dark
         }}
         codeTagProps={{
           style: {
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            background: 'transparent', // Remove per-line backgrounds
+          },
+        }}
+        lineNumberContainerStyle={{
+          background: 'transparent', // Remove line number background
+        }}
+        lineProps={{
+          style: {
+            background: 'transparent', // Remove per-line background styling
+            display: 'block',
           },
         }}
       >

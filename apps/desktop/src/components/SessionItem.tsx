@@ -2,16 +2,24 @@
  * SessionItem Component
  *
  * Individual session item in the session list with dropdown menu
+ * Uses shadcn/ui Item component for clean, simple list appearance
  */
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/services/api/types";
 import { GitBranch, MoreVertical, Trash2 } from "lucide-react";
@@ -42,13 +50,14 @@ export function SessionItem({
   };
 
   return (
-    <Card
+    <Item
       className={cn(
-        "transition-all border-2 cursor-pointer",
+        "cursor-pointer transition-colors",
         isActive
-          ? "border-primary bg-primary/5"
-          : "border-transparent hover:border-primary/30",
+          ? "bg-primary/10 hover:bg-primary/15"
+          : "hover:bg-muted/50"
       )}
+      size="sm"
       onClick={handleClick}
       role="button"
       aria-label={isActive ? `${session.title}` : `Switch to ${session.title}`}
@@ -60,47 +69,40 @@ export function SessionItem({
         }
       }}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            {/* Title and Badge Row */}
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-base truncate">
-                {session.title}
-              </h3>
-            </div>
+      <ItemMedia variant="icon">
+        <GitBranch className="h-4 w-4" />
+      </ItemMedia>
 
-            {/* Directory Path */}
-            <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-              <GitBranch className="h-3 w-3 inline shrink-0" />
-              <span title={session.rootDirectory}>{session.rootDirectory}</span>
-            </p>
-          </div>
+      <ItemContent>
+        <ItemTitle>{session.title}</ItemTitle>
+        <ItemDescription title={session.rootDirectory}>
+          {session.rootDirectory}
+        </ItemDescription>
+      </ItemContent>
 
-          {/* Dropdown Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                aria-label="Delete session"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Session
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardContent>
-    </Card>
+      <ItemActions>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              aria-label="Delete session"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={handleDelete}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Session
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ItemActions>
+    </Item>
   );
 }

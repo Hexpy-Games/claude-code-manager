@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { RestClient } from '@/services/api/rest-client';
 import type { Message, StreamMessage } from '@/services/api/types';
 import { WebSocketClient } from '@/services/api/websocket-client';
+import { useSessionStore } from '@/stores/sessionStore';
 import { DEBOUNCE_TIMES } from '@/constants/timings';
 import { getStorageItem, setStorageItem, removeStorageItem, sanitizeDraft } from '@/utils/storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -36,6 +37,14 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
   const contentBufferRef = useRef('');
   const renderDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRenderTimeRef = useRef<number>(0);
+
+  // Get session data from store
+  const session = useSessionStore((state) =>
+    state.sessions.find((s) => s.id === sessionId)
+  );
+
+  // Determine agent status
+  const agentStatus = isStreaming ? 'Writing...' : 'Idle';
 
   // Load draft message from localStorage when session changes
   useEffect(() => {
@@ -396,9 +405,16 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
     <div className="flex flex-col h-full">
       {/* Chat Header */}
       <div className="p-4 shrink-0">
-        <div className="flex items-center gap-2 mb-3">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Chat</h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <MessageCircle className="h-5 w-5 text-primary shrink-0" />
+            <h2 className="text-lg font-semibold truncate">
+              {session?.title || 'No Session'}
+            </h2>
+          </div>
+          <span className="text-xs text-muted-foreground shrink-0">
+            {agentStatus}
+          </span>
         </div>
         <Separator />
       </div>
