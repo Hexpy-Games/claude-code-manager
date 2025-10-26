@@ -16,7 +16,7 @@
 
 ### 1.1 Database Setup ✅
 - **Feature**: `001-database-setup`
-- **Files**: `packages/server/src/db/`
+- **Files**: `apps/server/src/db/`
 - **Status**: Complete
 - **Tests**: 17/17 passing
 - SQLite database with better-sqlite3
@@ -26,7 +26,7 @@
 
 ### 1.2 Git Service ✅
 - **Feature**: `002-git-service`
-- **Files**: `packages/server/src/services/git-service.ts`
+- **Files**: `apps/server/src/services/git-service.ts`
 - **Status**: Complete
 - **Tests**: 57/57 passing (21 original + 36 enhancements)
 - Git repository validation
@@ -36,7 +36,7 @@
 
 ### 1.3 Session Manager Service ✅
 - **Feature**: `003-session-manager`
-- **Files**: `packages/server/src/services/session-manager.ts`
+- **Files**: `apps/server/src/services/session-manager.ts`
 - **Status**: Complete
 - **Tests**: 25/25 passing
 - Create/read/update/delete sessions
@@ -46,7 +46,7 @@
 
 ### 1.4 Claude Agent Integration ✅
 - **Feature**: `004-claude-agent-integration`
-- **Files**: `packages/server/src/services/claude-agent-service.ts`
+- **Files**: `apps/server/src/services/claude-agent-service.ts`
 - **Status**: Complete
 - **Tests**: Integration tested via routes
 - **Implementation**: Claude Code CLI client (headless mode)
@@ -56,7 +56,7 @@
 
 ### 1.5 REST API Routes ✅
 - **Feature**: `005-rest-api`
-- **Files**: `packages/server/src/routes/`
+- **Files**: `apps/server/src/routes/`
 - **Status**: Complete
 - **Tests**: 43/43 passing
 - Session routes (CRUD, switch)
@@ -66,7 +66,7 @@
 
 ### 1.6 WebSocket for Streaming ✅
 - **Feature**: `006-websocket-streaming`
-- **Files**: `packages/server/src/routes/stream.ts`
+- **Files**: `apps/server/src/routes/stream.ts`
 - **Status**: Complete
 - **Tests**: 20/20 passing
 - Real-time message streaming
@@ -203,11 +203,11 @@
 2. ❌ **Backend Configuration Error**
    - **Problem**: Server required `claudeApiKey` parameter
    - **Fix**: Removed requirement, backend uses Claude Code CLI
-   - **Files**: `packages/server/src/server.ts`
+   - **Files**: `apps/server/src/server.ts`
 
 3. ❌ **Missing Dev Server**
    - **Problem**: No entry point for `pnpm dev`
-   - **Fix**: Added auto-start code to `packages/server/src/index.ts`
+   - **Fix**: Added auto-start code to `apps/server/src/index.ts`
    - **Result**: Backend starts with proper logging
 
 4. ❌ **Tauri Capabilities**
@@ -292,7 +292,7 @@ Replaced branch-switching architecture with clone-based approach where each sess
 - **Test Files**: 35 passing (10 backend + 25 e2e)
 - **Coverage**: 95.6% overall
 
-### Backend Tests (packages/server/)
+### Backend Tests (apps/server/)
 | Module | Tests | Status |
 |--------|-------|--------|
 | Database Client | 17 | ✅ Passing |

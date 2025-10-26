@@ -649,7 +649,7 @@ User presses ESC/Stop:
 5. **components/SessionList.tsx**
    - Clear active session on delete
 
-### Backend (packages/server/src/)
+### Backend (apps/server/src/)
 
 1. **services/claude-agent-service.ts**
    - Partial message saving (try-catch-finally)
@@ -663,10 +663,10 @@ User presses ESC/Stop:
 1. **apps/desktop/src/components/ChatInterface.test.tsx**
    - 5 new unit tests for message persistence
 
-2. **packages/server/src/services/claude-agent-service.test.ts**
+2. **apps/server/src/services/claude-agent-service.test.ts**
    - Updated 2 tests for partial saving
 
-3. **packages/server/src/routes/stream.test.ts**
+3. **apps/server/src/routes/stream.test.ts**
    - 4 new E2E tests for stop/interrupt
    - Enhanced cleanup logic
 

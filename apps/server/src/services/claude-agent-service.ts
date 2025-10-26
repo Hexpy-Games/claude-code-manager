@@ -356,6 +356,7 @@ export class ClaudeAgentService {
       }
       // Handle other Claude Code errors
       this.handleClaudeCodeError(error);
+      throw error; // Safety net - handleClaudeCodeError should always throw, but TS needs this
     } finally {
       // IMPORTANT: Save partial content if stream was interrupted and we haven't saved yet
       // This ensures interrupted messages (ESC/Stop button) are preserved

@@ -33,7 +33,7 @@
 
 ### Component/Service: GitService
 
-**File**: `packages/server/src/services/git-service.test.ts`
+**File**: `apps/server/src/services/git-service.test.ts`
 
 #### Test Suite: cloneRepository()
 
@@ -122,7 +122,7 @@ it('should not include node_modules or build artifacts in clone', async () => {
 
 ### Component/Service: SessionManager
 
-**File**: `packages/server/src/services/session-manager.test.ts`
+**File**: `apps/server/src/services/session-manager.test.ts`
 
 #### Test Suite: createSession() - Clone-Based
 
@@ -544,7 +544,7 @@ it('should migrate existing sessions to have workspaces', async () => {
 
 ### E2E Test 1: Complete User Workflow with Workspaces
 
-**File**: `packages/server/e2e/clone-based-sessions.spec.ts`
+**File**: `apps/server/e2e/clone-based-sessions.spec.ts`
 
 ##### ✅ Test Case 24: User creates and uses multiple isolated sessions
 ```typescript
@@ -664,8 +664,8 @@ export async function createTestGitRepo(): Promise<string> {
 pnpm test
 
 # Run unit tests for clone-based features
-pnpm test:unit packages/server/src/services/git-service.test.ts
-pnpm test:unit packages/server/src/services/session-manager.test.ts
+pnpm test:unit apps/server/src/services/git-service.test.ts
+pnpm test:unit apps/server/src/services/session-manager.test.ts
 
 # Run integration tests
 pnpm test:integration

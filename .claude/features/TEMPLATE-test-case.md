@@ -69,7 +69,7 @@ it('should throw [ErrorType] when [error condition]', () => {
 
 ### Component/Service: GitService
 
-**File**: `packages/server/src/services/git-service.test.ts`
+**File**: `apps/server/src/services/git-service.test.ts`
 
 #### Test Suite: checkGitInstalled()
 

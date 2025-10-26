@@ -509,7 +509,7 @@ N/A - This is a client library with no UI
 - [WebSocket API Documentation](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
 - [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
 - [MSW (Mock Service Worker)](https://mswjs.io/)
-- Backend API Routes: `packages/server/src/routes/`
+- Backend API Routes: `apps/server/src/routes/`
 
 ---
 

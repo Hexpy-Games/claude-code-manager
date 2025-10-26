@@ -33,7 +33,7 @@
 
 ### Component/Service: DatabaseClient
 
-**File**: `packages/server/src/db/client.test.ts`
+**File**: `apps/server/src/db/client.test.ts`
 
 #### Test Suite: constructor()
 

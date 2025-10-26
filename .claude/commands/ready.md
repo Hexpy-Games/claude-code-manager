@@ -142,7 +142,7 @@ grep "@anthropic-ai/claude-agent-sdk" package.json
 grep "@tauri-apps" package.json
 
 # Fastify
-grep "fastify" packages/server/package.json
+grep "fastify" apps/server/package.json
 ```
 
 ---

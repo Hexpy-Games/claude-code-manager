@@ -109,8 +109,8 @@ pnpm typecheck
    - Test message persistence
 
 3. **Implementation** (2-3 hours)
-   - Create `packages/server/src/db/schema.sql`
-   - Create `packages/server/src/db/client.ts`
+   - Create `apps/server/src/db/schema.sql`
+   - Create `apps/server/src/db/client.ts`
    - Implement SQLite connection with better-sqlite3
    - Create migrations system (simple)
 
@@ -118,7 +118,7 @@ pnpm typecheck
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── db/
 │   ├── schema.sql
 │   ├── client.ts
@@ -150,7 +150,7 @@ packages/server/src/
    - Test error scenarios
 
 3. **Implementation** (3-4 hours)
-   - Create `packages/server/src/services/git-service.ts`
+   - Create `apps/server/src/services/git-service.ts`
    - Implement using `simple-git` library
    - Methods:
      - `checkGitInstalled()`
@@ -165,7 +165,7 @@ packages/server/src/
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── services/
 │   ├── git-service.ts
 │   └── git-service.test.ts
@@ -196,7 +196,7 @@ packages/server/src/
    - Test error cases
 
 3. **Implementation** (4-5 hours)
-   - Create `packages/server/src/services/session-manager.ts`
+   - Create `apps/server/src/services/session-manager.ts`
    - Methods:
      - `createSession(title, rootDirectory)`
      - `getSession(id)`
@@ -209,7 +209,7 @@ packages/server/src/
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── services/
 │   ├── session-manager.ts
 │   └── session-manager.test.ts
@@ -241,7 +241,7 @@ packages/server/src/
    - Test tool calls
 
 3. **Implementation** (3-4 hours)
-   - Create `packages/server/src/services/claude-agent.ts`
+   - Create `apps/server/src/services/claude-agent.ts`
    - Initialize Claude Agent SDK
    - Methods:
      - `sendMessage(sessionId, message)`
@@ -252,7 +252,7 @@ packages/server/src/
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── services/
 │   ├── claude-agent.ts
 │   └── claude-agent.test.ts
@@ -281,7 +281,7 @@ packages/server/src/
    - Test error responses
 
 3. **Implementation** (3-4 hours)
-   - Create `packages/server/src/server.ts` (Fastify app)
+   - Create `apps/server/src/server.ts` (Fastify app)
    - Create routes:
      - `POST /api/sessions` - Create session
      - `GET /api/sessions` - List sessions
@@ -294,7 +294,7 @@ packages/server/src/
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── server.ts
 ├── routes/
 │   ├── sessions.ts
@@ -335,7 +335,7 @@ packages/server/src/
 
 **Files**:
 ```
-packages/server/src/
+apps/server/src/
 ├── routes/
 │   ├── stream.ts
 │   └── stream.test.ts

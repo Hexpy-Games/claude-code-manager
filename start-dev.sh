@@ -23,27 +23,42 @@ fi
 
 echo "✅ Environment configured"
 echo ""
-echo "Starting services..."
+echo "Starting services in current terminal..."
 echo "- Backend server: http://localhost:3000"
 echo "- Desktop app: Will launch automatically"
 echo ""
-echo "📝 Note: This will open 2 terminal windows"
-echo "   - Window 1: Backend server"
-echo "   - Window 2: Desktop app"
+echo "Press Ctrl+C to stop all services"
 echo ""
 
-# Start backend server in new terminal
-osascript -e 'tell application "Terminal" to do script "cd '"$(pwd)"' && pnpm --filter @claude-code-manager/server dev"'
+# Function to cleanup background processes on exit
+cleanup() {
+    echo ""
+    echo "🛑 Stopping services..."
+    kill $BACKEND_PID $DESKTOP_PID 2>/dev/null
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Start backend server in background
+echo "📦 Starting backend server..."
+pnpm --filter @claude-code-manager/server dev &
+BACKEND_PID=$!
 
 # Wait a bit for backend to start
-echo "⏳ Waiting for backend to start..."
 sleep 3
 
-# Start desktop app in new terminal
-osascript -e 'tell application "Terminal" to do script "cd '"$(pwd)"'/apps/desktop && pnpm dev"'
+# Start desktop app in background
+echo "🖥️  Starting desktop app..."
+cd apps/desktop && pnpm dev &
+DESKTOP_PID=$!
+cd ../..
 
-echo "✅ Services starting..."
 echo ""
-echo "To stop:"
-echo "  - Press Ctrl+C in each terminal window"
-echo "  - Or run: pkill -f 'pnpm.*dev'"
+echo "✅ Services running!"
+echo "   Backend PID: $BACKEND_PID"
+echo "   Desktop PID: $DESKTOP_PID"
+echo ""
+
+# Wait for both processes
+wait $BACKEND_PID $DESKTOP_PID

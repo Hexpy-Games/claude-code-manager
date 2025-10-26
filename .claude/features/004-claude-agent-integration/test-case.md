@@ -33,7 +33,7 @@
 
 ### Component/Service: ClaudeAgentService
 
-**File**: `packages/server/src/services/claude-agent-service.test.ts`
+**File**: `apps/server/src/services/claude-agent-service.test.ts`
 
 #### Test Suite: Constructor and Initialization
 
@@ -1161,7 +1161,7 @@ vi.mock('@anthropic-ai/claude-agent-sdk', () => ({
 
 ```bash
 # Run all server tests
-cd packages/server
+cd apps/server
 pnpm test
 
 # Run specific test file

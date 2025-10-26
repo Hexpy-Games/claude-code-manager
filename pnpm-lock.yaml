@@ -190,7 +190,7 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2(@types/node@22.18.12)(@vitest/ui@4.0.2)(happy-dom@20.0.8)(jsdom@27.0.1)(msw@2.11.6)
 
-  packages/server:
+  apps/server:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.1.0
@@ -237,13 +237,13 @@ importers:
         version: 2.1.9(vitest@2.1.9)
       tsup:
         specifier: ^8.3.5
-        version: 8.5.0(tsx@4.20.6)(typescript@5.9.3)
+        version: 8.5.0(tsx@4.20.6)(typescript@5.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.6
       typescript:
         specifier: ^5.6.3
-        version: 5.9.3
+        version: 5.8.3
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.18.12)
@@ -265,7 +265,7 @@ importers:
         version: 2.1.9(vitest@2.1.9)
       tsup:
         specifier: ^8.3.5
-        version: 8.5.0(tsx@4.20.6)(typescript@5.9.3)
+        version: 8.5.0(typescript@5.9.3)
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
@@ -6010,7 +6010,51 @@ packages:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
     dev: false
 
-  /tsup@8.5.0(tsx@4.20.6)(typescript@5.9.3):
+  /tsup@8.5.0(tsx@4.20.6)(typescript@5.8.3):
+    resolution: {integrity: sha512-VmBp77lWNQq6PfuMqCHD3xWl22vEoWsKajkF8t+yMBawlUS8JzEI+vOVMeuNZIuMML8qXRizFKi9oD5glKQVcQ==}
+    engines: {node: '>=18'}
+    hasBin: true
+    peerDependencies:
+      '@microsoft/api-extractor': ^7.36.0
+      '@swc/core': ^1
+      postcss: ^8.4.12
+      typescript: '>=4.5.0'
+    peerDependenciesMeta:
+      '@microsoft/api-extractor':
+        optional: true
+      '@swc/core':
+        optional: true
+      postcss:
+        optional: true
+      typescript:
+        optional: true
+    dependencies:
+      bundle-require: 5.1.0(esbuild@0.25.11)
+      cac: 6.7.14
+      chokidar: 4.0.3
+      consola: 3.4.2
+      debug: 4.4.3
+      esbuild: 0.25.11
+      fix-dts-default-cjs-exports: 1.0.1
+      joycon: 3.1.1
+      picocolors: 1.1.1
+      postcss-load-config: 6.0.1(tsx@4.20.6)
+      resolve-from: 5.0.0
+      rollup: 4.52.5
+      source-map: 0.8.0-beta.0
+      sucrase: 3.35.0
+      tinyexec: 0.3.2
+      tinyglobby: 0.2.15
+      tree-kill: 1.2.2
+      typescript: 5.8.3
+    transitivePeerDependencies:
+      - jiti
+      - supports-color
+      - tsx
+      - yaml
+    dev: true
+
+  /tsup@8.5.0(typescript@5.9.3):
     resolution: {integrity: sha512-VmBp77lWNQq6PfuMqCHD3xWl22vEoWsKajkF8t+yMBawlUS8JzEI+vOVMeuNZIuMML8qXRizFKi9oD5glKQVcQ==}
     engines: {node: '>=18'}
     hasBin: true

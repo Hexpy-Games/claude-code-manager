@@ -320,7 +320,7 @@ async switchSession(sessionId: string): Promise<Session> {
 
 **Database Migration**:
 ```typescript
-// packages/server/src/db/migrations/add-workspace-path.ts
+// apps/server/src/db/migrations/add-workspace-path.ts
 export async function migrateToCloneBased(db: Database) {
   // 1. Add workspace_path column
   db.exec('ALTER TABLE sessions ADD COLUMN workspace_path TEXT NOT NULL DEFAULT ""');

@@ -324,7 +324,7 @@ ab -n 100 -c 10 http://localhost:3000/health
 Backend is configured to allow all origins in development:
 
 ```typescript
-// packages/server/src/server.ts
+// apps/server/src/server.ts
 corsOrigin: true  // Development only!
 ```
 
@@ -401,7 +401,7 @@ rm -f ~/.claude-code-manager/data/sessions.db
 LOG_LEVEL=debug pnpm --filter @claude-code-manager/server dev
 
 # Enable Node.js inspector
-node --inspect packages/server/dist/index.js
+node --inspect apps/server/dist/index.js
 ```
 
 ### Frontend Debugging

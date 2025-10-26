@@ -127,7 +127,7 @@ pnpm clean && pnpm install
 ### Code
 - `apps/desktop/` - Tauri desktop app
 - `apps/web/` - Web client
-- `packages/server/` - Backend API
+- `apps/server/` - Backend API
 - `packages/shared/` - Shared types
 
 ### Tests

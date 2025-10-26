@@ -85,9 +85,9 @@ pnpm dev
 claude-code-manager/
 ├── apps/
 │   ├── desktop/          # Tauri desktop app
+│   ├── server/           # Backend API server
 │   └── web/              # Web client (future)
 ├── packages/
-│   ├── server/           # Backend API server
 │   ├── shared/           # Shared types and utilities
 │   └── ui/               # Shared UI components
 ├── .claude/

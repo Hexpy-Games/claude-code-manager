@@ -316,7 +316,7 @@ claude --version
 npm install -g @anthropic-ai/claude-code-manager
 
 # Check backend logs
-cd packages/server
+cd apps/server
 pnpm dev
 ```
 

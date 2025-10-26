@@ -122,7 +122,7 @@ Based on the test cases, create test files:
 
 ### For Unit Tests
 Create `*.test.ts` files next to implementation:
-- `packages/server/src/services/[service].test.ts`
+- `apps/server/src/services/[service].test.ts`
 - `apps/desktop/src/components/[component].test.tsx`
 
 ### For E2E Tests

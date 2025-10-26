@@ -141,9 +141,9 @@ pnpm test:e2e
 claude-code-manager/
 ├── apps/
 │   ├── desktop/              # Tauri app (Rust + React)
+│   ├── server/               # Backend API (Node.js + TS)
 │   └── web/                  # Web client (React)
 ├── packages/
-│   ├── server/               # Backend API (Node.js + TS)
 │   ├── shared/               # Shared types and utils
 │   └── ui/                   # Shared UI components
 ├── .claude/

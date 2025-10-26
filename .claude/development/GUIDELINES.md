@@ -142,7 +142,7 @@ Before writing ANY implementation code:
 
 ```bash
 # Create test file
-touch packages/server/src/services/session-service.test.ts
+touch apps/server/src/services/session-service.test.ts
 
 # Write tests that describe expected behavior
 # Run tests - they should FAIL

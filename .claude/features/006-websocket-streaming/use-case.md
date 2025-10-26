@@ -336,7 +336,7 @@ ws://localhost:PORT/api/sessions/:sessionId/stream
 
 ### Code Structure
 ```
-packages/server/src/
+apps/server/src/
 ├── routes/
 │   └── stream.ts          # WebSocket route handler
 └── server.ts              # Register WebSocket plugin
