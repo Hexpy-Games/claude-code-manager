@@ -22,7 +22,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { NewSessionDialog } from './NewSessionDialog';
 import { SessionItem } from './SessionItem';
 
@@ -107,8 +107,11 @@ export function SessionList({
     setDeleteSessionId(null);
   };
 
-  // Sort sessions by updatedAt descending
-  const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+  // Sort sessions by updatedAt descending (memoized to avoid re-sorting on every render)
+  const sortedSessions = useMemo(
+    () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
+    [sessions]
+  );
 
   // Virtual scrolling setup
   const rowVirtualizer = useVirtualizer({

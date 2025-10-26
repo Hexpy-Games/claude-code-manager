@@ -10,8 +10,10 @@ import { CodeBlock } from '@/components/ui/code-block';
 import { CopyButton } from '@/components/ui/copy-button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Message } from '@/services/api/types';
+import { DEBOUNCE_TIMES, SCROLL_THRESHOLDS } from '@/constants/timings';
+import { getStorageItem, setStorageItem, sanitizeScrollPosition, parseScrollPosition } from '@/utils/storage';
 import { Bot, Loader2, User } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
@@ -72,8 +74,9 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isUserScrollingRef = useRef(false);
   const scrollCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isRestoringScrollRef = useRef(false);
+  const scrollRestorationInProgressRef = useRef(false);
   const scrollSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
 
   // Get the actual scrollable viewport element (Radix UI ScrollArea structure)
   const getScrollElement = (): HTMLElement | null => {
@@ -83,97 +86,109 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
   };
 
   // Smart scroll function that respects user scrolling
-  const scrollToBottom = (force = false) => {
+  const scrollToBottom = useCallback((force = false) => {
     const scrollElement = getScrollElement();
     if (!scrollElement) return;
 
     // Don't auto-scroll if user is manually scrolling up (unless forced)
     if (!force && isUserScrollingRef.current) {
-      console.log('[MessageList] Skipping auto-scroll - user is scrolling');
       return;
     }
 
     requestAnimationFrame(() => {
       const element = getScrollElement();
       if (element) {
-        console.log('[MessageList] 📜 Scrolling to bottom');
         element.scrollTop = element.scrollHeight;
       }
     });
-  };
+  }, []);
 
   // Detect if user is manually scrolling and save scroll position
-  const handleScroll = (event: Event) => {
+  const handleScroll = useCallback((event: Event) => {
     const scrollElement = event.target as HTMLElement;
     if (!scrollElement) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollElement;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // User is scrolling if they're more than 100px from bottom
-    isUserScrollingRef.current = distanceFromBottom > 100;
+    // User is scrolling if they're more than threshold from bottom
+    isUserScrollingRef.current = distanceFromBottom > SCROLL_THRESHOLDS.BOTTOM_THRESHOLD_PX;
 
-    // Reset user scrolling flag after 2 seconds of no scroll activity
+    // Reset user scrolling flag after delay of no scroll activity
     if (scrollCheckTimeoutRef.current) {
       clearTimeout(scrollCheckTimeoutRef.current);
     }
     scrollCheckTimeoutRef.current = setTimeout(() => {
       // If we're near the bottom, re-enable auto-scroll
-      if (distanceFromBottom < 100) {
+      if (distanceFromBottom < SCROLL_THRESHOLDS.BOTTOM_THRESHOLD_PX) {
         isUserScrollingRef.current = false;
       }
-    }, 2000);
+    }, DEBOUNCE_TIMES.SCROLL_RESET_MS);
 
     // Save scroll position to localStorage (debounced to avoid excessive writes)
     // Don't save if we're currently restoring scroll position
-    if (sessionId && !isRestoringScrollRef.current) {
+    if (sessionId && !scrollRestorationInProgressRef.current) {
       if (scrollSaveTimeoutRef.current) {
         clearTimeout(scrollSaveTimeoutRef.current);
       }
       scrollSaveTimeoutRef.current = setTimeout(() => {
         const scrollKey = `scroll_${sessionId}`;
-        localStorage.setItem(scrollKey, String(scrollTop));
-      }, 500); // Save after 500ms of no scrolling
+        const sanitized = sanitizeScrollPosition(scrollTop);
+        setStorageItem(scrollKey, sanitized);
+      }, DEBOUNCE_TIMES.SCROLL_SAVE_MS);
     }
-  };
+  }, [sessionId]);
 
   // Scenario 1: When user selects a session, restore scroll position or scroll to bottom
   useEffect(() => {
     if (sessionId && messages.length > 0) {
       const scrollKey = `scroll_${sessionId}`;
-      const savedScrollPosition = localStorage.getItem(scrollKey);
+      const savedScrollPosition = getStorageItem(scrollKey);
+      const parsedPosition = parseScrollPosition(savedScrollPosition);
 
-      if (savedScrollPosition) {
+      if (parsedPosition !== null) {
         // Restore saved scroll position
-        console.log('[MessageList] Session changed, restoring scroll position:', savedScrollPosition);
-        isRestoringScrollRef.current = true;
-        requestAnimationFrame(() => {
+        scrollRestorationInProgressRef.current = true;
+
+        // Cancel any previous rAF
+        if (scrollRafRef.current !== null) {
+          cancelAnimationFrame(scrollRafRef.current);
+        }
+
+        scrollRafRef.current = requestAnimationFrame(() => {
           const scrollElement = getScrollElement();
           if (scrollElement) {
-            scrollElement.scrollTop = Number(savedScrollPosition);
+            scrollElement.scrollTop = parsedPosition;
             // Wait a bit before allowing scroll saves again
             setTimeout(() => {
-              isRestoringScrollRef.current = false;
-            }, 100);
+              scrollRestorationInProgressRef.current = false;
+            }, DEBOUNCE_TIMES.SCROLL_RESTORATION_DELAY_MS);
           }
+          scrollRafRef.current = null;
         });
       } else {
         // No saved position, scroll to bottom
-        console.log('[MessageList] Session changed, scrolling to bottom');
         isUserScrollingRef.current = false; // Reset user scrolling flag
         scrollToBottom(true); // Force scroll on session change
       }
     }
-  }, [sessionId]);
+
+    // Cleanup: cancel rAF if component unmounts or sessionId changes
+    return () => {
+      if (scrollRafRef.current !== null) {
+        cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, [sessionId, scrollToBottom]);
 
   // Scenario 2: When user enters a new message, scroll to it
   useEffect(() => {
     if (messages.length > 0) {
-      console.log('[MessageList] New message added, scrolling to bottom');
       isUserScrollingRef.current = false; // Reset user scrolling flag
       scrollToBottom(true); // Force scroll for new messages
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToBottom]);
 
   // Scenario 3: When streaming response, automatically scroll to last part
   const lastMessageContent = messages[messages.length - 1]?.content;
@@ -188,14 +203,14 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
     // Smooth scroll during streaming - respect user scrolling
     scrollTimeoutRef.current = setTimeout(() => {
       scrollToBottom(false); // Don't force during streaming
-    }, 50); // Faster scroll updates during streaming
+    }, DEBOUNCE_TIMES.RENDER_THROTTLE_MS * 3); // Faster scroll updates during streaming (~50ms)
 
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [lastMessageContent, streamingMessageId]);
+  }, [lastMessageContent, streamingMessageId, scrollToBottom]);
 
   if (messages.length === 0) {
     return (
@@ -210,7 +225,6 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
     const scrollElement = getScrollElement();
     if (scrollElement) {
       scrollElement.addEventListener('scroll', handleScroll);
-      console.log('[MessageList] Scroll event listener attached');
     }
 
     return () => {
@@ -227,7 +241,7 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
         clearTimeout(scrollSaveTimeoutRef.current);
       }
     };
-  }, []);
+  }, [handleScroll]);
 
   return (
     <ScrollArea className="flex-1" ref={scrollAreaRef}>

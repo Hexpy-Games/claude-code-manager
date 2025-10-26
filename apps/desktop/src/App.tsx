@@ -74,16 +74,21 @@ function AppContent() {
   }, { enableOnFormTags: true });
 
   // Cmd/Ctrl+1-9 - Switch to session by number
-  for (let i = 1; i <= 9; i++) {
-    useHotkeys(`mod+${i}`, (e) => {
-      e.preventDefault();
-      const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
-      const targetSession = sortedSessions[i - 1];
-      if (targetSession) {
-        setActiveSessionId(targetSession.id);
-      }
-    }, { enableOnFormTags: true }, [sessions]);
-  }
+  useHotkeys('mod+1, mod+2, mod+3, mod+4, mod+5, mod+6, mod+7, mod+8, mod+9', (e, handler) => {
+    e.preventDefault();
+
+    // Extract the number from the pressed key
+    const pressedKey = handler.keys?.[0];
+    if (!pressedKey) return;
+
+    const sessionIndex = Number(pressedKey) - 1;
+    const sortedSessions = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
+    const targetSession = sortedSessions[sessionIndex];
+
+    if (targetSession) {
+      setActiveSessionId(targetSession.id);
+    }
+  }, { enableOnFormTags: true }, [sessions]);
 
   return (
     <>

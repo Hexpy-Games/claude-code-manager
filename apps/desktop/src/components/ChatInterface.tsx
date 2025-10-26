@@ -9,9 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { RestClient } from '@/services/api/rest-client';
 import type { Message, StreamMessage } from '@/services/api/types';
 import { WebSocketClient } from '@/services/api/websocket-client';
+import { DEBOUNCE_TIMES } from '@/constants/timings';
+import { getStorageItem, setStorageItem, removeStorageItem, sanitizeDraft } from '@/utils/storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 
@@ -43,7 +45,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
     }
 
     const draftKey = `draft_${sessionId}`;
-    const savedDraft = localStorage.getItem(draftKey);
+    const savedDraft = getStorageItem(draftKey);
     if (savedDraft) {
       setDraftMessage(savedDraft);
     } else {
@@ -51,20 +53,21 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
     }
   }, [sessionId]);
 
-  // Save draft message to localStorage when it changes
+  // Save draft message to localStorage when it changes (with sanitization)
   useEffect(() => {
     if (!sessionId) return;
 
     const draftKey = `draft_${sessionId}`;
     if (draftMessage) {
-      localStorage.setItem(draftKey, draftMessage);
+      const sanitized = sanitizeDraft(draftMessage);
+      setStorageItem(draftKey, sanitized);
     } else {
-      localStorage.removeItem(draftKey);
+      removeStorageItem(draftKey);
     }
   }, [draftMessage, sessionId]);
 
   // Helper function to clear streaming state and refresh
-  const clearStreamingState = () => {
+  const clearStreamingState = useCallback(() => {
     isStreamingRef.current = false;
     setIsStreaming(false);
     streamingCompleteRef.current = false;
@@ -89,7 +92,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
     if (sessionId) {
       queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
     }
-  };
+  }, [sessionId, queryClient]);
 
   // Handle stop/interrupt streaming (like Claude Code CLI ESC/Ctrl+C)
   const handleStopStreaming = () => {
@@ -144,26 +147,26 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
           // Reconnect WebSocket for next message
           const wsClient = wsClientRef.current;
           if (wsClient && sessionId) {
-            wsClient.connect(sessionId).catch((error) => {
-              console.error('[ChatInterface] Failed to reconnect WebSocket:', error);
+            wsClient.connect(sessionId).catch(() => {
+              // WebSocket reconnection failed - will retry on next message
             });
           }
-        }).catch((error) => {
-          console.error('[ChatInterface] Refetch failed after interrupt:', error);
+        }).catch(() => {
+          // Refetch failed after interrupt - will retry on next action
           // Even if refetch fails, reconnect WebSocket
           const wsClient = wsClientRef.current;
           if (wsClient && sessionId) {
-            wsClient.connect(sessionId).catch((err) => {
-              console.error('[ChatInterface] Failed to reconnect WebSocket:', err);
+            wsClient.connect(sessionId).catch(() => {
+              // WebSocket reconnection failed - will retry on next message
             });
           }
         });
       }
-    }, 1000); // Longer delay (1 second) to ensure backend has time to save
+    }, DEBOUNCE_TIMES.INTERRUPT_REFETCH_DELAY_MS);
   };
 
   // Flush buffer and update UI with final content
-  const flushBufferAndUpdate = () => {
+  const flushBufferAndUpdate = useCallback(() => {
     const finalContent = contentBufferRef.current;
     if (!finalContent) return;
 
@@ -174,7 +177,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
         content: finalContent,
       };
     });
-  };
+  }, []);
 
   // Initialize WebSocket client
   useEffect(() => {
@@ -189,10 +192,10 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
         // Append to buffer
         contentBufferRef.current += msg.content;
 
-        // Throttle rendering: update immediately if 100ms has passed, otherwise debounce for 16ms
+        // Throttle rendering: update immediately if MIN_RENDER_INTERVAL_MS has passed, otherwise debounce
         const now = Date.now();
         const timeSinceLastRender = now - lastRenderTimeRef.current;
-        const shouldRenderImmediately = timeSinceLastRender >= 100;
+        const shouldRenderImmediately = timeSinceLastRender >= DEBOUNCE_TIMES.MIN_RENDER_INTERVAL_MS;
 
         if (renderDebounceRef.current) {
           clearTimeout(renderDebounceRef.current);
@@ -205,11 +208,9 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
           renderDebounceRef.current = setTimeout(() => {
             lastRenderTimeRef.current = Date.now();
             flushBufferAndUpdate();
-          }, 16); // ~60fps debounce
+          }, DEBOUNCE_TIMES.RENDER_THROTTLE_MS); // ~60fps debounce
         }
       } else if (msg.type === 'done') {
-        console.log('[ChatInterface] Received done event from WebSocket');
-
         // Mark streaming as complete
         streamingCompleteRef.current = true;
 
@@ -221,10 +222,8 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
         flushBufferAndUpdate();
 
         // Refetch messages from server to get saved versions
-        console.log('[ChatInterface] Streaming complete, refreshing messages from server');
         if (sessionId) {
           queryClient.invalidateQueries({ queryKey: ['messages', sessionId] }).then(() => {
-            console.log('[ChatInterface] Messages refetched, clearing optimistic state');
 
             // Clear optimistic state after successful refetch
             setOptimisticMessages([]);
@@ -243,39 +242,33 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
           });
         }
       } else if (msg.type === 'error') {
-        // Handle error
-        console.error('[ChatInterface] Streaming error:', msg.message);
+        // Handle streaming error
         streamingCompleteRef.current = true;
 
         // Save partial content if it exists
         flushBufferAndUpdate();
 
         // Clear after showing error
-        setTimeout(() => clearStreamingState(), 1000);
+        setTimeout(() => clearStreamingState(), DEBOUNCE_TIMES.INTERRUPT_REFETCH_DELAY_MS);
       }
     });
 
     // Handle WebSocket close
-    wsClient.onClose((code, reason) => {
-      console.log(`[ChatInterface] WebSocket closed: ${code} - ${reason}`);
-
+    wsClient.onClose(() => {
       // Only force refresh if we were streaming AND it didn't complete normally
       if (isStreamingRef.current && !streamingCompleteRef.current) {
-        console.log('[ChatInterface] WebSocket closed during streaming, forcing refresh');
         clearStreamingState();
       }
     });
 
     // Handle WebSocket errors
-    wsClient.onError((error) => {
-      console.error('[ChatInterface] WebSocket error:', error);
+    wsClient.onError(() => {
+      // WebSocket error - will be handled by reconnection logic
     });
 
-    console.log(`[ChatInterface] 🔌 Connecting WebSocket to session: ${sessionId}`);
-    wsClient.connect(sessionId).then(() => {
-      console.log('[ChatInterface] ✅ WebSocket connection established');
-    }).catch((error) => {
-      console.error('[ChatInterface] ❌ WebSocket connection failed:', error);
+    // Connect WebSocket to session
+    wsClient.connect(sessionId).catch(() => {
+      // WebSocket connection failed - will retry on next message
     });
 
     wsClientRef.current = wsClient;
@@ -292,7 +285,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
         renderDebounceRef.current = null;
       }
     };
-  }, [sessionId, wsBaseUrl, queryClient]);
+  }, [sessionId, wsBaseUrl, queryClient, clearStreamingState, flushBufferAndUpdate]);
 
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['messages', sessionId],
@@ -313,8 +306,6 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
       streamingCompleteRef.current = false;
       contentBufferRef.current = '';
       lastRenderTimeRef.current = 0;
-      console.log('[ChatInterface] Sending message via WebSocket');
-      console.log('[ChatInterface] Clearing any previous optimistic messages');
 
       // Clear previous optimistic messages and streaming message from interrupted streams
       setOptimisticMessages([]);
@@ -340,21 +331,16 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
         toolCalls: null,
         timestamp: Date.now(),
       };
-      console.log('[ChatInterface] 🤖 Creating streaming assistant message with id:', streamingAssistantMessage.id);
       setStreamingMessage(streamingAssistantMessage);
-      console.log('[ChatInterface] ✅ Streaming message state set');
 
-      // Set timeout to force refresh if streaming takes too long (60 seconds)
+      // Set timeout to force refresh if streaming takes too long
       streamingTimeoutRef.current = setTimeout(() => {
-        console.warn('[ChatInterface] Streaming timeout reached, forcing refresh');
         streamingCompleteRef.current = true;
         clearStreamingState();
-      }, 60000);
+      }, DEBOUNCE_TIMES.STREAMING_TIMEOUT_MS);
 
       // Send message via WebSocket (not HTTP!)
-      console.log('[ChatInterface] 📤 Sending message via WebSocket:', content.substring(0, 100));
       wsClientRef.current.sendMessage(content);
-      console.log('[ChatInterface] ✅ WebSocket send called successfully');
 
       // Return a promise that resolves when done
       return new Promise((resolve) => {
@@ -364,21 +350,15 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
       });
     },
     onSuccess: async () => {
-      console.log('[ChatInterface] Message sent via WebSocket, waiting for response stream');
       // Message sent via WebSocket
       // Response will come as streaming chunks
       // Wait for 'done' event before clearing optimistic state
     },
-    onError: (error) => {
-      console.error('[ChatInterface] Message send failed:', error);
-
+    onError: () => {
       // IMPORTANT: Even on timeout/error, refetch messages from server
       // Backend might have succeeded even if HTTP request timed out
       if (sessionId) {
-        console.log('[ChatInterface] Error occurred, but refetching to check if backend succeeded');
-        queryClient.invalidateQueries({ queryKey: ['messages', sessionId] }).then(() => {
-          console.log('[ChatInterface] Messages refetched after error');
-        });
+        queryClient.invalidateQueries({ queryKey: ['messages', sessionId] });
       }
 
       // Clear optimistic state after refetch starts
@@ -398,7 +378,7 @@ export function ChatInterface({ sessionId, client, wsBaseUrl = 'ws://localhost:3
           clearTimeout(renderDebounceRef.current);
           renderDebounceRef.current = null;
         }
-      }, 500); // Small delay to let refetch complete
+      }, DEBOUNCE_TIMES.REFETCH_CLEAR_DELAY_MS);
     },
   });
 
