@@ -6,7 +6,7 @@ You are helping start a new feature using Test-Driven Development. Follow these 
 
 First, read the following files to understand the project:
 - `CLAUDE.md` - Project overview and architecture
-- `GUIDELINES.md` - Development workflow and standards
+- `.claude/development/GUIDELINES.md` - Development workflow and standards
 
 ## Step 2: Understand Feature Request
 
@@ -17,7 +17,7 @@ Ask the user:
 
 ## Step 3: Create Feature Documentation
 
-Create the following documents in `docs/features/{number}-{feature-name}/`:
+Create the following documents in `.claude/features/{number}-{feature-name}/`:
 
 ### 3.1 Use Case Document (`use-case.md`)
 

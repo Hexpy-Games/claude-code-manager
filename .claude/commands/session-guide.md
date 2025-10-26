@@ -119,10 +119,10 @@ pnpm clean && pnpm install
 ## File Locations
 
 ### Documentation
-- `docs/features/` - Feature specifications
-- `docs/architecture/` - System design docs
+- `.claude/features/` - Feature specifications
+- `.claude/architecture/` - System design docs
 - `CLAUDE.md` - Project context
-- `GUIDELINES.md` - Detailed workflow
+- `.claude/development/GUIDELINES.md` - Detailed workflow
 
 ### Code
 - `apps/desktop/` - Tauri desktop app
@@ -162,7 +162,7 @@ docs(architecture): update Git strategy
 
 ### Reading Material
 1. **New to project?** Read `CLAUDE.md`
-2. **Need detailed workflow?** Read `GUIDELINES.md`
+2. **Need detailed workflow?** Read `.claude/development/GUIDELINES.md`
 3. **Starting feature?** Run `/start-feature`
 4. **Ready to merge?** Run `/review-ready`
 

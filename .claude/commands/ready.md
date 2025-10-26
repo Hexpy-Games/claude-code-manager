@@ -24,16 +24,16 @@ After running `/ready`, you can answer ANY question about this project with accu
 Read foundational documents:
 
 **CLAUDE.md** - Project overview, architecture, workflow
-**GUIDELINES.md** - Detailed development process, TDD, quality gates
+**.claude/development/GUIDELINES.md** - Detailed development process, TDD, quality gates
 **README.md** - Project introduction and setup
 
 ### 2. Work History & Progress
 
 Check all progress and history:
 
-**PROGRESS.md** - Track record of what's been accomplished
-**TESTING.md** - Testing status and coverage reports (if exists)
-**PHASE-*-SUMMARY.md** - Phase completion summaries (if exists)
+**.claude/development/PROGRESS.md** - Track record of what's been accomplished
+**.claude/testing/TESTING.md** - Testing status and coverage reports
+**.claude/development/PHASE-*-SUMMARY.md** - Phase completion summaries
 
 View recent commits:
 ```bash
@@ -77,7 +77,7 @@ Review all implemented and planned features:
 
 ```bash
 # List all feature docs
-ls -la docs/features/
+ls -la .claude/features/
 
 # Read each feature's use-case.md, test-case.md, implementation.md
 ```
@@ -202,7 +202,7 @@ main
 Review and report:
 - Current development phase
 - Active session branch
-- Recent accomplishments (from PROGRESS.md)
+- Recent accomplishments (from docs/development/PROGRESS.md)
 - Next planned features
 - Test coverage status
 
@@ -331,7 +331,7 @@ After `/ready`, you will:
 2. **Know the architecture** - How everything fits together
 3. **Follow the workflow** - Proper development process
 4. **See the history** - What's been built and why
-5. **Track the progress** - Where we are and what's next
+5. **Track the progress** - Where we are and what's next (from .claude/development/PROGRESS.md)
 6. **Apply standards** - Code quality requirements
 7. **Answer anything** - Complete expert knowledge
 

@@ -433,6 +433,6 @@ claude-code-manager/
 ---
 
 For more details, see:
-- `docs/architecture/git-session-strategy.md`
-- `docs/architecture/api-design.md`
-- `docs/architecture/data-model.md`
+- `.claude/architecture/git-session-strategy.md`
+- `.claude/architecture/api-design.md`
+- `.claude/architecture/data-model.md`

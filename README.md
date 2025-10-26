@@ -90,14 +90,13 @@ claude-code-manager/
 │   ├── server/           # Backend API server
 │   ├── shared/           # Shared types and utilities
 │   └── ui/               # Shared UI components
-├── docs/
+├── .claude/
+│   ├── commands/         # Claude Code slash commands
 │   ├── features/         # Feature specifications
 │   ├── architecture/     # System design docs
-│   └── development/      # Development guides
-├── .claude/
-│   └── commands/         # Claude Code slash commands
+│   ├── development/      # Development guides
+│   └── testing/          # Testing documentation
 ├── CLAUDE.md             # Project context for Claude Code
-├── GUIDELINES.md         # Development workflow
 └── README.md             # This file
 ```
 
@@ -114,7 +113,7 @@ We follow a strict Test-Driven Development (TDD) process with phase gates:
 6. Merge                → Only if everything passes
 ```
 
-**Read [`GUIDELINES.md`](./GUIDELINES.md) for detailed workflow.**
+**Read [`.claude/development/GUIDELINES.md`](./.claude/development/GUIDELINES.md) for detailed workflow.**
 
 ### Slash Commands
 
@@ -181,7 +180,7 @@ main
 
 > **Latest**: ✅ **Phase 2 COMPLETE** - Desktop UI fully functional with E2E tests
 > **Next**: Phase 3 - MVP Polish (Performance, UX, Visual improvements)
-> **Details**: See [PROGRESS.md](./PROGRESS.md) and [PHASE-2-SUMMARY.md](./PHASE-2-SUMMARY.md)
+> **Details**: See [PROGRESS.md](./.claude/development/PROGRESS.md) and [PHASE-2-SUMMARY.md](./.claude/development/PHASE-2-SUMMARY.md)
 
 ### ✅ Phase 1: Backend Core (COMPLETE)
 - ✅ Project setup and monorepo configuration
@@ -225,19 +224,20 @@ main
 
 ## Documentation
 
-- **[PROGRESS.md](./PROGRESS.md)** - Current development status and roadmap
 - **[CLAUDE.md](./CLAUDE.md)** - Project context for AI assistants
-- **[GUIDELINES.md](./GUIDELINES.md)** - Development workflow and standards
-- **[MVP-ROADMAP.md](./docs/MVP-ROADMAP.md)** - MVP scope and timeline
-- **[docs/features/](./docs/features/)** - Feature specifications
-- **[docs/architecture/](./docs/architecture/)** - System design
-- **[docs/development/](./docs/development/)** - Development guides
+- **[README.md](./README.md)** - This file (human-facing documentation)
+- **[.claude/development/PROGRESS.md](./.claude/development/PROGRESS.md)** - Current development status and roadmap
+- **[.claude/development/GUIDELINES.md](./.claude/development/GUIDELINES.md)** - Development workflow and standards
+- **[.claude/MVP-ROADMAP.md](./.claude/MVP-ROADMAP.md)** - MVP scope and timeline
+- **[.claude/features/](./.claude/features/)** - Feature specifications
+- **[.claude/architecture/](./.claude/architecture/)** - System design
+- **[.claude/testing/](./.claude/testing/)** - Testing documentation
 
 ## Contributing
 
 This project follows strict quality standards:
 
-1. Read [`GUIDELINES.md`](./GUIDELINES.md) first
+1. Read [`.claude/development/GUIDELINES.md`](./.claude/development/GUIDELINES.md) first
 2. Use `/start-feature` to begin new work
 3. Write tests before code (TDD)
 4. Run `/review-ready` before merging
@@ -248,7 +248,7 @@ This project follows strict quality standards:
 ```bash
 # 1. Read project context
 cat CLAUDE.md
-cat GUIDELINES.md
+cat .claude/development/GUIDELINES.md
 
 # 2. Start Claude Code in project directory
 cd claude-code-manager

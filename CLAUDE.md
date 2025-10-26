@@ -68,15 +68,19 @@ Every feature MUST follow this sequence:
 ### Document Structure
 
 ```
-docs/
+.claude/
 ├── features/
 │   ├── {feature-number}-{feature-name}/
 │   │   ├── use-case.md          ← What it does
 │   │   ├── test-case.md         ← How to test it
 │   │   └── implementation.md    ← Technical notes
 │   └── TEMPLATE-*.md            ← Templates for new features
-└── architecture/
-    └── *.md                     ← System design docs
+├── architecture/
+│   └── *.md                     ← System design docs
+├── development/
+│   └── *.md                     ← Development guides
+└── testing/
+    └── *.md                     ← Testing documentation
 ```
 
 ### Rules
@@ -142,14 +146,14 @@ claude-code-manager/
 │   ├── server/               # Backend API (Node.js + TS)
 │   ├── shared/               # Shared types and utils
 │   └── ui/                   # Shared UI components
-├── docs/
+├── .claude/
+│   ├── commands/             # Project slash commands
 │   ├── features/             # Feature specs and test cases
 │   ├── architecture/         # System design
-│   └── development/          # Dev guides
-├── .claude/
-│   └── commands/             # Project slash commands
+│   ├── development/          # Dev guides (GUIDELINES, PROGRESS, etc.)
+│   └── testing/              # Testing documentation
 ├── CLAUDE.md                 # This file
-└── GUIDELINES.md             # Detailed workflow guide
+└── README.md                 # Human-facing documentation
 ```
 
 ## Key Features
@@ -225,8 +229,8 @@ Use these commands in Claude Code sessions:
 When starting a development session:
 
 1. Read this file (CLAUDE.md)
-2. Read GUIDELINES.md for detailed workflow
-3. Review current feature docs in `docs/features/`
+2. Read .claude/development/GUIDELINES.md for detailed workflow
+3. Review current feature docs in `.claude/features/`
 4. Check Git branch (`git branch --show-current`)
 5. Verify tests pass before starting (`pnpm test`)
 
