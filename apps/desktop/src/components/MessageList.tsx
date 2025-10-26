@@ -212,14 +212,6 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
     };
   }, [lastMessageContent, streamingMessageId, scrollToBottom]);
 
-  if (messages.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <p>No messages yet. Start a conversation!</p>
-      </div>
-    );
-  }
-
   // Attach scroll event listener to the viewport element
   useEffect(() => {
     const scrollElement = getScrollElement();
@@ -242,6 +234,14 @@ export function MessageList({ messages, streamingMessageId, sessionId }: Message
       }
     };
   }, [handleScroll]);
+
+  if (messages.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <p>No messages yet. Start a conversation!</p>
+      </div>
+    );
+  }
 
   return (
     <ScrollArea className="flex-1" ref={scrollAreaRef}>

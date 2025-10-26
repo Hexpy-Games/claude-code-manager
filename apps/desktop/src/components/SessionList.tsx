@@ -13,18 +13,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { RestClient } from '@/services/api/rest-client';
-import { useSessionStore } from '@/stores/sessionStore';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { Plus } from 'lucide-react';
-import { useRef, useState, useMemo } from 'react';
-import { NewSessionDialog } from './NewSessionDialog';
-import { SessionItem } from './SessionItem';
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { RestClient } from "@/services/api/rest-client";
+import { useSessionStore } from "@/stores/sessionStore";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { Plus } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
+import { NewSessionDialog } from "./NewSessionDialog";
+import { SessionItem } from "./SessionItem";
 
 interface SessionListProps {
   client: RestClient;
@@ -38,12 +38,14 @@ export function SessionList({
   onNewDialogOpenChange: externalOnNewDialogOpenChange,
 }: SessionListProps) {
   const queryClient = useQueryClient();
-  const { setSessions, setActiveSessionId, activeSessionId } = useSessionStore();
+  const { setSessions, setActiveSessionId, activeSessionId } =
+    useSessionStore();
 
   // Use external state if provided, otherwise use local state
   const [localIsNewDialogOpen, setLocalIsNewDialogOpen] = useState(false);
   const isNewDialogOpen = externalIsNewDialogOpen ?? localIsNewDialogOpen;
-  const setIsNewDialogOpen = externalOnNewDialogOpenChange ?? setLocalIsNewDialogOpen;
+  const setIsNewDialogOpen =
+    externalOnNewDialogOpenChange ?? setLocalIsNewDialogOpen;
 
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -54,7 +56,7 @@ export function SessionList({
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['sessions'],
+    queryKey: ["sessions"],
     queryFn: async () => {
       const data = await client.listSessions();
       setSessions(data);
@@ -71,7 +73,7 @@ export function SessionList({
     mutationFn: (id: string) => client.switchSession(id),
     onSuccess: (session) => {
       setActiveSessionId(session.id);
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
     },
   });
 
@@ -83,8 +85,8 @@ export function SessionList({
       if (deletedSessionId === activeSessionId) {
         setActiveSessionId(null);
       }
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['messages'] });
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
       setDeleteSessionId(null);
     },
   });
@@ -107,17 +109,11 @@ export function SessionList({
     setDeleteSessionId(null);
   };
 
-  // Sort sessions by updatedAt descending (memoized to avoid re-sorting on every render)
-  const sortedSessions = useMemo(
-    () => [...sessions].sort((a, b) => b.updatedAt - a.updatedAt),
-    [sessions]
-  );
-
   // Virtual scrolling setup
   const rowVirtualizer = useVirtualizer({
-    count: sortedSessions.length,
+    count: sessions.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 88, // Estimated height of each SessionItem (80px + 8px gap)
+    estimateSize: () => 100, // Estimated height of each SessionItem (~84px + 16px gap from mb-4)
     overscan: 5, // Render 5 extra items above and below viewport
   });
 
@@ -126,7 +122,11 @@ export function SessionList({
       <div className="p-3">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Sessions</h2>
-          <Button onClick={() => setIsNewDialogOpen(true)} size="sm" aria-label="New Session">
+          <Button
+            onClick={() => setIsNewDialogOpen(true)}
+            size="sm"
+            aria-label="New Session"
+          >
             <Plus className="h-4 w-4 mr-1" />
             New
           </Button>
@@ -145,11 +145,13 @@ export function SessionList({
           <p>Error loading sessions</p>
           <p className="text-sm">{String(error)}</p>
         </div>
-      ) : sortedSessions.length === 0 ? (
+      ) : sessions.length === 0 ? (
         <div className="flex-1 flex items-center justify-center p-8 text-center text-muted-foreground">
           <div>
             <p>No sessions yet</p>
-            <p className="text-sm mt-2">Create your first session to get started</p>
+            <p className="text-sm mt-2">
+              Create your first session to get started
+            </p>
           </div>
         </div>
       ) : (
@@ -157,29 +159,30 @@ export function SessionList({
           <div
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
+              width: "100%",
+              position: "relative",
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const session = sortedSessions[virtualRow.index];
+              const session = sessions[virtualRow.index];
               return (
                 <div
                   key={session.id}
                   data-index={virtualRow.index}
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 0,
                     left: 0,
-                    width: '100%',
+                    width: "100%",
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
-                    padding: '0 12px',
+                    padding: "0 12px",
                   }}
                 >
-                  <div className="mb-2">
+                  <div className="mb-4">
                     <SessionItem
                       session={session}
+                      isActive={session.id === activeSessionId}
                       onSwitch={handleSwitch}
                       onDelete={handleDeleteClick}
                     />
@@ -191,19 +194,31 @@ export function SessionList({
         </div>
       )}
 
-      <NewSessionDialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen} client={client} />
+      <NewSessionDialog
+        open={isNewDialogOpen}
+        onOpenChange={setIsNewDialogOpen}
+        client={client}
+      />
 
-      <AlertDialog open={deleteSessionId !== null} onOpenChange={handleDeleteCancel}>
+      <AlertDialog
+        open={deleteSessionId !== null}
+        onOpenChange={handleDeleteCancel}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Session</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this session? This action cannot be undone.
+              Are you sure you want to delete this session? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

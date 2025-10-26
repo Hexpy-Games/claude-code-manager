@@ -4,29 +4,34 @@
  * Individual session item in the session list with dropdown menu
  */
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import type { Session } from '@/services/api/types';
-import { GitBranch, MoreVertical, Trash2 } from 'lucide-react';
-import type React from 'react';
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import type { Session } from "@/services/api/types";
+import { GitBranch, MoreVertical, Trash2 } from "lucide-react";
+import type React from "react";
 
 interface SessionItemProps {
   session: Session;
+  isActive: boolean;
   onSwitch: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export function SessionItem({ session, onSwitch, onDelete }: SessionItemProps) {
+export function SessionItem({
+  session,
+  isActive,
+  onSwitch,
+  onDelete,
+}: SessionItemProps) {
   const handleClick = () => {
-    if (!session.isActive) {
+    if (!isActive) {
       onSwitch(session.id);
     }
   };
@@ -39,17 +44,17 @@ export function SessionItem({ session, onSwitch, onDelete }: SessionItemProps) {
   return (
     <Card
       className={cn(
-        'transition-all border-2 cursor-pointer',
-        session.isActive
-          ? 'border-primary bg-primary/5 shadow-sm'
-          : 'border-transparent hover:border-primary/30 hover:shadow-sm'
+        "transition-all border-2 cursor-pointer",
+        isActive
+          ? "border-primary bg-primary/5"
+          : "border-transparent hover:border-primary/30",
       )}
       onClick={handleClick}
       role="button"
-      aria-label={session.isActive ? `${session.title}` : `Switch to ${session.title}`}
+      aria-label={isActive ? `${session.title}` : `Switch to ${session.title}`}
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           handleClick();
         }
@@ -60,12 +65,9 @@ export function SessionItem({ session, onSwitch, onDelete }: SessionItemProps) {
           <div className="flex-1 min-w-0">
             {/* Title and Badge Row */}
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-base truncate">{session.title}</h3>
-              {session.isActive && (
-                <Badge variant="default" className="shrink-0 text-xs px-2 py-0.5">
-                  Active
-                </Badge>
-              )}
+              <h3 className="font-semibold text-base truncate">
+                {session.title}
+              </h3>
             </div>
 
             {/* Directory Path */}
@@ -88,7 +90,10 @@ export function SessionItem({ session, onSwitch, onDelete }: SessionItemProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Session
               </DropdownMenuItem>

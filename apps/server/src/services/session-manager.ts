@@ -188,7 +188,7 @@ export class SessionManager {
   /**
    * List all sessions
    *
-   * @returns Array of sessions, sorted by updated_at DESC
+   * @returns Array of sessions, sorted by created_at ASC (creation order)
    */
   async listSessions(): Promise<Session[]> {
     return this.db.getSessions();

@@ -202,7 +202,7 @@ describe('DatabaseClient', () => {
       db.close();
     });
 
-    it('should return all sessions ordered by updated_at DESC', async () => {
+    it('should return all sessions ordered by created_at ASC', async () => {
       // Arrange
       db.insertSession({
         id: 'sess_1',
@@ -228,7 +228,8 @@ describe('DatabaseClient', () => {
 
       // Assert
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe('sess_2'); // Most recent first
+      expect(result[0].id).toBe('sess_1'); // Oldest first (creation order)
+      expect(result[1].id).toBe('sess_2');
     });
 
     it('should return empty array when no sessions exist', () => {

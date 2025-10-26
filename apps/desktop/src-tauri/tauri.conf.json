@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "Claude Code Manager",
-        "width": 1200,
-        "height": 800
+        "width": 800,
+        "height": 600,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 15, "y": 20 }
       }
     ],
     "security": {

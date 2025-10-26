@@ -10,19 +10,19 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import type { RestClient } from '@/services/api/rest-client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+} from "@/components/ui/select";
+import type { RestClient } from "@/services/api/rest-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 interface SettingsDialogProps {
   client: RestClient;
@@ -30,14 +30,18 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({
+  client,
+  open,
+  onOpenChange,
+}: SettingsDialogProps) {
   const queryClient = useQueryClient();
-  const [model, setModel] = useState<string>('sonnet');
-  const [theme, setTheme] = useState<string>('system');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [model, setModel] = useState<string>("sonnet");
+  const [theme, setTheme] = useState<string>("system");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const { isLoading, data: settings } = useQuery({
-    queryKey: ['settings'],
+    queryKey: ["settings"],
     queryFn: async () => {
       const settings = await client.getAllSettings();
       return settings;
@@ -48,8 +52,8 @@ export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogPro
   // Sync React Query data with local state
   useEffect(() => {
     if (settings) {
-      const modelSetting = settings.find((s) => s.key === 'model');
-      const themeSetting = settings.find((s) => s.key === 'theme');
+      const modelSetting = settings.find((s) => s.key === "model");
+      const themeSetting = settings.find((s) => s.key === "theme");
 
       if (modelSetting) setModel(modelSetting.value);
       if (themeSetting) setTheme(themeSetting.value);
@@ -58,13 +62,16 @@ export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogPro
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await Promise.all([client.setSetting('model', model), client.setSetting('theme', theme)]);
+      await Promise.all([
+        client.setSetting("model", model),
+        client.setSetting("theme", theme),
+      ]);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['settings'] });
-      setSuccessMessage('Settings saved successfully!');
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      setSuccessMessage("Settings saved successfully!");
       setTimeout(() => {
-        setSuccessMessage('');
+        setSuccessMessage("");
         onOpenChange(false);
       }, 1500);
     },
@@ -75,27 +82,22 @@ export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogPro
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-xl">Settings</DialogTitle>
-          <DialogDescription>Configure your application preferences</DialogDescription>
+          <DialogDescription>
+            Configure your application preferences
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* API Key Info */}
-          <div className="rounded-lg bg-muted/50 p-3 border border-border">
-            <p className="text-sm text-muted-foreground">
-              API key is managed by Claude Code CLI. Use{' '}
-              <code className="bg-background/80 px-1.5 py-0.5 rounded text-xs font-mono border border-border">
-                claude configure
-              </code>{' '}
-              to set it up.
-            </p>
-          </div>
-
           {/* Model Selection */}
           <div className="space-y-2">
             <Label htmlFor="model" className="text-sm font-medium">
               Model
             </Label>
-            <Select value={model} onValueChange={setModel} disabled={isLoading || saveMutation.isPending}>
+            <Select
+              value={model}
+              onValueChange={setModel}
+              disabled={isLoading || saveMutation.isPending}
+            >
               <SelectTrigger id="model">
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
@@ -112,7 +114,11 @@ export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogPro
             <Label htmlFor="theme" className="text-sm font-medium">
               Theme
             </Label>
-            <Select value={theme} onValueChange={setTheme} disabled={isLoading || saveMutation.isPending}>
+            <Select
+              value={theme}
+              onValueChange={setTheme}
+              disabled={isLoading || saveMutation.isPending}
+            >
               <SelectTrigger id="theme">
                 <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
@@ -141,8 +147,11 @@ export function SettingsDialog({ client, open, onOpenChange }: SettingsDialogPro
           >
             Cancel
           </Button>
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-            {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </DialogContent>

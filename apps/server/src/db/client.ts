@@ -110,7 +110,7 @@ export class DatabaseClient {
         created_at as createdAt, updated_at as updatedAt,
         last_message_at as lastMessageAt, metadata, is_active as isActive
       FROM sessions
-      ORDER BY updated_at DESC
+      ORDER BY created_at ASC
     `);
 
     const rows = stmt.all() as any[];
